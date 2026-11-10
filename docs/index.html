@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>CobbleSpire 체험판</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 레이아웃: 상단 가방 바 + 한 화면 앱. 루트 지도는 가로 길, 전투는 적(위)·파티(중)·손패(아래) 3단. */
+:root{
+  --bg:#f3efe3; --panel:#fffdf6; --panel2:#ece6d2; --line:#cdbf9b; --fg:#2b2418; --muted:#6f6350;
+  --accent:#d9302b; --accent2:#2f6fd6; --grass:#5aa64a; --road:#d8c48e; --energy:#f2b705; --good:#2e8b57; --bad:#c0392b;
+  --card:#fffaf0; --shadow:0 2px 0 #cdbf9b;
+  --display:'Jua','Noto Sans KR',system-ui,sans-serif; --body:'Noto Sans KR',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#1c1a16; --panel:#2a2720; --panel2:#35312a; --line:#5a5240; --fg:#f1eadb; --muted:#b1a68e;
+  --accent:#ef5a4e; --accent2:#6b9df0; --grass:#6cc45a; --road:#8a7745; --energy:#ffcc33; --good:#5ccf8a; --bad:#ff7a6b;
+  --card:#33302a; --shadow:0 2px 0 #14120f; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#1c1a16; --panel:#2a2720; --panel2:#35312a; --line:#5a5240; --fg:#f1eadb; --muted:#b1a68e;
+  --accent:#ef5a4e; --accent2:#6b9df0; --grass:#6cc45a; --road:#8a7745; --energy:#ffcc33; --good:#5ccf8a; --bad:#ff7a6b;
+  --card:#33302a; --shadow:0 2px 0 #14120f; color-scheme:dark }
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:8px 16px}
+*{box-sizing:border-box}
+button{font-family:inherit;font-size:14px;color:var(--fg);background:var(--panel);border:2px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;box-shadow:var(--shadow)}
+button:hover{background:var(--panel2)}
+button:focus-visible{outline:3px solid var(--accent2);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--accent);color:#fff;border-color:#8f1d1a}
+button.primary:hover{filter:brightness(1.08)}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:34px} h2{font-size:22px} h3{font-size:17px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.bar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:6px 12px;font-size:13px}
+.bar .brand{font-family:var(--display);font-size:18px;margin-right:auto}
+.bar .k{color:var(--muted);margin-right:3px}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;letter-spacing:.04em;background:var(--panel2);border:1px solid var(--line)}
+.pill.mode{background:var(--accent2);color:#fff;border-color:transparent}
+.panel{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:14px}
+.muted{color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.grow{flex:1 1 240px;min-width:0}
+.center{text-align:center}
+.tiny{font-size:12px}
+.type{display:inline-block;color:#fff;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;text-shadow:0 1px 0 rgba(0,0,0,.35);line-height:17px}
+.hpbar{height:10px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.hpbar i{display:block;height:100%;background:var(--good);transition:width .25s}
+.hpbar i.low{background:var(--bad)} .hpbar i.mid{background:#d9a300}
+.mon{border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--panel);min-width:0;position:relative}
+.mon .nm{font-family:var(--display);font-size:16px}
+.mon .orb{width:44px;height:44px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-family:var(--display);font-size:20px;text-shadow:0 1px 1px rgba(0,0,0,.4);flex:none;border:3px solid rgba(255,255,255,.5)}
+.mon.fainted{opacity:.5;filter:grayscale(1)}
+.mon.active{border-color:var(--accent2);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent2) 30%,transparent)}
+.mon.target{cursor:pointer;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent)}
+.mon.bench{cursor:pointer}
+.st{display:inline-block;font-size:11px;border-radius:4px;padding:0 5px;background:var(--panel2);border:1px solid var(--line);margin:2px 2px 0 0}
+.st.bad{background:color-mix(in srgb,var(--bad) 20%,var(--panel2))} .st.good{background:color-mix(in srgb,var(--good) 25%,var(--panel2))}
+.block{display:inline-block;background:var(--accent2);color:#fff;border-radius:6px;padding:0 6px;font-size:12px;font-weight:700}
+.intent{margin-top:6px;font-size:12px;background:var(--panel2);border-radius:6px;padding:4px 8px}
+.hand{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 10px;min-height:150px}
+.card{flex:none;width:124px;min-height:150px;background:var(--card);border:2px solid var(--line);border-radius:10px;padding:6px 7px 6px;position:relative;cursor:pointer;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px;transition:transform .12s}
+.card:hover{transform:translateY(-4px)}
+.card.off{opacity:.45;cursor:not-allowed}
+.card.sel{outline:3px solid var(--accent);transform:translateY(-6px)}
+.card .cost{position:absolute;top:-8px;left:-8px;width:26px;height:26px;border-radius:50%;background:var(--energy);color:#2b2418;font-family:var(--display);font-size:15px;display:grid;place-items:center;border:2px solid #9a6f00}
+.card .cn{font-family:var(--display);font-size:14px;padding-left:12px;line-height:1.15}
+.card .stripe{height:4px;border-radius:2px}
+.card .cd{font-size:11.5px;line-height:1.3;color:var(--fg);flex:1}
+.card .ow{font-size:10px;color:var(--muted);border-top:1px dashed var(--line);padding-top:2px}
+.card.up .cn{color:var(--accent2)}
+.card.big{width:150px;min-height:170px}
+.energy{display:inline-flex;align-items:center;gap:6px;font-family:var(--display);font-size:20px}
+.energy b{width:34px;height:34px;border-radius:50%;background:var(--energy);color:#2b2418;display:grid;place-items:center;border:3px solid #9a6f00;font-weight:400}
+.log{font-size:12px;background:var(--panel2);border-radius:8px;padding:6px 10px;max-height:118px;overflow-y:auto;font-variant-numeric:tabular-nums}
+.log div+div{margin-top:2px}
+.map{overflow-x:auto;background:linear-gradient(180deg,color-mix(in srgb,var(--grass) 25%,var(--panel)),var(--panel));border:2px solid var(--line);border-radius:12px;padding:8px}
+.map svg{display:block;min-width:720px}
+.node{cursor:pointer}
+.node.done{opacity:.55} .node.off{opacity:.8;cursor:default}
+.node.open circle.ring{stroke:var(--accent);stroke-width:3;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{stroke-opacity:.3}}
+@media (prefers-reduced-motion:reduce){.node.open circle.ring{animation:none}.card{transition:none}}
+.choices{display:flex;flex-direction:column;gap:8px}
+.choices button{text-align:left;padding:10px 12px}
+.choices button small{display:block;color:var(--muted);font-weight:400}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.item{border:2px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--card)}
+.item .nm{font-family:var(--display);font-size:15px}
+.starter{cursor:pointer;flex:1 1 220px}
+.starter:hover{border-color:var(--accent2)}
+.help{font-size:13px}
+.help table{border-collapse:collapse;font-size:12.5px;width:100%}
+.help td,.help th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+dialog{border:2px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);max-width:min(720px,92vw);padding:16px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.float{position:absolute;right:8px;top:6px;font-family:var(--display);font-size:20px;color:var(--bad);animation:up .8s forwards;pointer-events:none}
+@keyframes up{to{transform:translateY(-22px);opacity:0}}
+.field{display:grid;gap:8px}
+.field.three{grid-template-columns:repeat(3,1fr)}
+@media (max-width:640px){.field.three{grid-template-columns:1fr}}
+.seg{display:inline-flex;border:2px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;box-shadow:none}
+.seg button.on{background:var(--accent2);color:#fff}
+.kbd{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;background:var(--panel2)}
+
+/* 스프라이트·이펙트 */
+.spr{image-rendering:pixelated;image-rendering:crisp-edges;width:64px;height:64px;object-fit:contain;flex:none;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35))}
+.spr.big{width:96px;height:96px}
+.spr.sm{width:40px;height:40px}
+.ico{image-rendering:pixelated;width:22px;height:22px;vertical-align:middle;margin-right:2px}
+.mon{position:relative;overflow:visible}
+.mon.hit{animation:shake .35s}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.mon.fainting .spr{animation:faint .6s forwards}
+@keyframes faint{to{transform:translateY(24px);opacity:0}}
+.burst{position:absolute;left:50%;top:40%;width:18px;height:18px;margin:-9px;border-radius:50%;pointer-events:none;animation:burst .5s forwards;z-index:3}
+@keyframes burst{0%{transform:scale(.3);opacity:.9}60%{transform:scale(4);opacity:.5}100%{transform:scale(5.5);opacity:0}}
+.fnum{position:absolute;left:55%;top:10px;font-family:var(--display);font-size:22px;pointer-events:none;animation:fnum 1s forwards;z-index:4;text-shadow:0 1px 0 #fff,0 -1px 0 #fff,1px 0 0 #fff,-1px 0 0 #fff;white-space:nowrap}
+.fnum.dmg{color:#d42}.fnum.heal{color:#2a4}.fnum.txt{font-size:13px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 6px;text-shadow:none}
+.fnum.super{color:#e0a000;font-size:24px}
+@keyframes fnum{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-34px);opacity:0}}
+.arena{border-radius:12px;padding:12px;background:linear-gradient(180deg,#8fd0ff 0%,#cfe9c4 55%,#9bc46b 100%);position:relative;overflow:hidden}
+:root[data-theme="dark"] .arena{background:linear-gradient(180deg,#223a55 0%,#2f4a33 55%,#3e5a2a 100%)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .arena{background:linear-gradient(180deg,#223a55 0%,#2f4a33 55%,#3e5a2a 100%)}}
+.arena.rain::after,.arena.sand::after,.arena.sun::after{content:"";position:absolute;inset:0;pointer-events:none}
+.arena.rain::after{background:repeating-linear-gradient(115deg,transparent 0 14px,rgba(120,170,255,.35) 14px 16px);animation:rain .5s linear infinite}
+@keyframes rain{to{background-position:40px 60px}}
+.arena.sand::after{background:repeating-linear-gradient(100deg,transparent 0 9px,rgba(200,170,90,.35) 9px 11px);animation:sand .4s linear infinite}
+@keyframes sand{to{background-position:60px 10px}}
+.arena.sun::after{background:radial-gradient(circle at 85% 10%,rgba(255,230,120,.7),transparent 45%)}
+.arena .mon{background:color-mix(in srgb,var(--panel) 90%,transparent)}
+.busyb{font-size:12px;color:var(--muted)}
+.ball{display:inline-block;width:40px;height:40px;image-rendering:pixelated;animation:wobble 1.6s ease-in-out 1}
+@keyframes wobble{0%,100%{transform:rotate(0)}15%{transform:rotate(-25deg)}30%{transform:rotate(25deg)}45%{transform:rotate(-20deg)}60%{transform:rotate(20deg)}75%{transform:rotate(-10deg)}}
+.capres{opacity:0;animation:appear .3s 1.6s forwards}
+@keyframes appear{to{opacity:1}}
+.cat{display:inline-block;font-size:10px;border-radius:3px;padding:0 4px;color:#fff;font-weight:700}
+.cat.p{background:#c0392b}.cat.s{background:#5b4bd6}.cat.x{background:#777}.cat.t{background:#2e8b57}
+.hand .card{animation:deal .25s}
+@keyframes deal{from{transform:translateY(14px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.hand .card,.mon.hit,.burst,.fnum,.ball,.arena::after,.mon.fainting .spr{animation:none!important}}
+/* 장면 배경 (직접 그린 SVG, 외부 리소스 없음) */
+.arena{background-size:cover;background-position:center bottom}
+.arena.bg-route{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%236fbcff'/%3E%3Cstop offset='1' stop-color='%23dff2ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='300' fill='url(%23s)'/%3E%3Cg fill='%23fff' opacity='.85'%3E%3Cellipse cx='130' cy='62' rx='58' ry='20'/%3E%3Cellipse cx='160' cy='50' rx='34' ry='16'/%3E%3Cellipse cx='560' cy='48' rx='74' ry='22'/%3E%3Cellipse cx='600' cy='38' rx='36' ry='16'/%3E%3C/g%3E%3Cpath d='M0 200 Q200 130 400 190 T800 180 V300 H0Z' fill='%23a6dd7e'/%3E%3Cpath d='M0 236 Q250 196 500 240 T800 226 V300 H0Z' fill='%2378c05f'/%3E%3Cg stroke='%234f9a3a' stroke-width='3' fill='none' stroke-linecap='round'%3E%3Cpath d='M90 262 l5 -16 l5 16 M100 262 l3 -18 l3 18'/%3E%3Cpath d='M300 272 l5 -16 l5 16 M310 272 l3 -18 l3 18'/%3E%3Cpath d='M620 258 l5 -16 l5 16 M630 258 l3 -18 l3 18'/%3E%3C/g%3E%3Cpath d='M0 300 Q400 262 800 300Z' fill='%235aa347'/%3E%3C/svg%3E")}
+.arena.bg-forest{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%231f4a2a'/%3E%3Cstop offset='1' stop-color='%233f7a3a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='300' fill='url(%23s)'/%3E%3Cg fill='%23163d22'%3E%3Cpath d='M40 240 L90 110 L140 240Z'/%3E%3Cpath d='M150 250 L210 90 L270 250Z'/%3E%3Cpath d='M560 250 L620 100 L680 250Z'/%3E%3Cpath d='M690 240 L740 120 L790 240Z'/%3E%3C/g%3E%3Cg fill='%23215a30'%3E%3Cpath d='M0 250 L60 130 L120 250Z'/%3E%3Cpath d='M230 260 L300 120 L370 260Z'/%3E%3Cpath d='M420 255 L480 115 L540 255Z'/%3E%3Cpath d='M640 260 L700 130 L760 260Z'/%3E%3C/g%3E%3Cg fill='%234a2d16'%3E%3Crect x='84' y='250' width='12' height='30'/%3E%3Crect x='294' y='258' width='12' height='28'/%3E%3Crect x='474' y='254' width='12' height='30'/%3E%3Crect x='694' y='258' width='12' height='28'/%3E%3C/g%3E%3Cpath d='M0 300 Q400 250 800 300Z' fill='%232e6b2e'/%3E%3Ccircle cx='720' cy='60' r='26' fill='%23fff8c0' opacity='.35'/%3E%3C/svg%3E")}
+.arena.bg-mount{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%236fbcff'/%3E%3Cstop offset='1' stop-color='%23dff2ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='300' fill='url(%23s)'/%3E%3Cg fill='%239c8a62'%3E%3Cpath d='M0 230 L120 90 L240 230Z'/%3E%3Cpath d='M180 240 L330 60 L480 240Z'/%3E%3Cpath d='M420 236 L560 110 L700 236Z'/%3E%3Cpath d='M620 240 L740 120 L860 240Z'/%3E%3C/g%3E%3Cg fill='%23f4f1e8'%3E%3Cpath d='M300 96 L330 60 L360 96Z'/%3E%3Cpath d='M538 128 L560 110 L582 128Z'/%3E%3C/g%3E%3Cpath d='M0 232 Q400 200 800 236 V300 H0Z' fill='%23cdb98a'/%3E%3Cpath d='M0 300 Q400 262 800 300Z' fill='%23b39c6d'/%3E%3C/svg%3E")}
+.arena.bg-cave{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Crect width='800' height='300' fill='%233a3f4c'/%3E%3Cg fill='%232a2e38'%3E%3Cpath d='M0 0 H800 V40 L760 90 L720 40 L660 110 L620 40 L560 80 L520 40 L450 130 L400 40 L340 100 L300 40 L240 120 L190 40 L130 90 L90 40 L40 100 L0 40Z'/%3E%3C/g%3E%3Cg fill='%234c5262'%3E%3Cellipse cx='120' cy='262' rx='70' ry='26'/%3E%3Cellipse cx='520' cy='270' rx='90' ry='30'/%3E%3Cellipse cx='720' cy='258' rx='60' ry='24'/%3E%3C/g%3E%3Cpath d='M0 300 Q400 268 800 300Z' fill='%232a2e38'/%3E%3Cg fill='%238fd0ff' opacity='.25'%3E%3Ccircle cx='230' cy='210' r='5'/%3E%3Ccircle cx='640' cy='190' r='4'/%3E%3Ccircle cx='400' cy='228' r='3'/%3E%3C/g%3E%3C/svg%3E")}
+.arena.bg-city{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%236fbcff'/%3E%3Cstop offset='1' stop-color='%23dff2ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='300' fill='url(%23s)'/%3E%3Cg fill='%239a9892'%3E%3Crect x='30' y='120' width='70' height='120'/%3E%3Crect x='120' y='90' width='50' height='150'/%3E%3Crect x='200' y='140' width='90' height='100'/%3E%3Crect x='520' y='110' width='60' height='130'/%3E%3Crect x='600' y='70' width='80' height='170'/%3E%3Crect x='710' y='130' width='60' height='110'/%3E%3C/g%3E%3Cg fill='%23fff2c0'%3E%3Crect x='40' y='135' width='10' height='10'/%3E%3Crect x='60' y='135' width='10' height='10'/%3E%3Crect x='130' y='105' width='8' height='10'/%3E%3Crect x='150' y='125' width='8' height='10'/%3E%3Crect x='615' y='90' width='10' height='12'/%3E%3Crect x='640' y='120' width='10' height='12'/%3E%3C/g%3E%3Crect x='330' y='150' width='150' height='90' fill='%23f3efe3'/%3E%3Cpath d='M320 152 L405 100 L490 152Z' fill='%237a1c1c'/%3E%3Crect x='392' y='200' width='26' height='40' fill='%237a1c1c'/%3E%3Crect x='0' y='240' width='800' height='60' fill='%23b9b2a3'/%3E%3Cg stroke='%23d9d4c7' stroke-width='2'%3E%3Cpath d='M0 262 H800 M0 284 H800'/%3E%3C/g%3E%3C/svg%3E")}
+.arena.bg-gym{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Crect width='800' height='300' fill='%234e433a'/%3E%3Cg fill='%236b5c4e'%3E%3Crect x='60' y='40' width='40' height='200'/%3E%3Crect x='700' y='40' width='40' height='200'/%3E%3Crect x='40' y='30' width='80' height='14'/%3E%3Crect x='680' y='30' width='80' height='14'/%3E%3C/g%3E%3Cg fill='%237d6a52'%3E%3Cellipse cx='200' cy='250' rx='80' ry='22'/%3E%3Cellipse cx='600' cy='252' rx='90' ry='24'/%3E%3Cellipse cx='400' cy='262' rx='120' ry='20'/%3E%3C/g%3E%3Crect x='0' y='262' width='800' height='38' fill='%238c7756'/%3E%3Cg stroke='%23a38d66' stroke-width='3' fill='none'%3E%3Ccircle cx='400' cy='275' r='60'/%3E%3Ccircle cx='400' cy='275' r='120'/%3E%3C/g%3E%3Cg fill='%23d4a017' opacity='.7'%3E%3Crect x='380' y='70' width='40' height='40' transform='rotate(45 400 90)'/%3E%3C/g%3E%3C/svg%3E")}
+.arena.bg-forest .mon,.arena.bg-cave .mon,.arena.bg-gym .mon{background:color-mix(in srgb,var(--panel) 92%,transparent)}
+.scene{position:relative;border:2px solid var(--line);border-radius:14px;overflow:hidden;min-height:230px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 360' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%233f8fe0'/%3E%3Cstop offset='1' stop-color='%23cfe9ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='360' fill='url(%23s)'/%3E%3Ccircle cx='1020' cy='80' r='46' fill='%23fff2a8'/%3E%3Cg fill='%238aa7c4' opacity='.8'%3E%3Cpath d='M0 250 L140 120 L260 250Z'/%3E%3Cpath d='M200 260 L380 90 L560 260Z'/%3E%3Cpath d='M520 250 L660 140 L800 250Z'/%3E%3Cpath d='M760 260 L920 110 L1080 260Z'/%3E%3Cpath d='M1000 250 L1120 150 L1240 250Z'/%3E%3C/g%3E%3Cg fill='%23f4f1e8' opacity='.9'%3E%3Cpath d='M352 118 L380 90 L408 118Z'/%3E%3Cpath d='M892 138 L920 110 L948 138Z'/%3E%3C/g%3E%3Cpath d='M0 258 Q300 200 600 250 T1200 240 V360 H0Z' fill='%237cc06a'/%3E%3Cg fill='%233f7a3a'%3E%3Cpath d='M80 300 L110 240 L140 300Z'/%3E%3Cpath d='M150 306 L180 236 L210 306Z'/%3E%3Cpath d='M900 300 L930 236 L960 300Z'/%3E%3Cpath d='M970 306 L1005 230 L1040 306Z'/%3E%3Cpath d='M1050 300 L1080 246 L1110 300Z'/%3E%3C/g%3E%3Cpath d='M0 330 Q300 290 600 322 T1200 316 V360 H0Z' fill='%235aa347'/%3E%3Cpath d='M520 360 Q560 300 600 300 Q640 300 680 360Z' fill='%23d8c48e'/%3E%3Crect x='560' y='300' width='80' height='48' fill='%23f3efe3'/%3E%3Cpath d='M552 302 L600 272 L648 302Z' fill='%23d9302b'/%3E%3Crect x='592' y='326' width='16' height='22' fill='%23d9302b'/%3E%3C/svg%3E") center bottom/cover no-repeat;color:#1a2a3a}
+.scene::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 700 100' preserveAspectRatio='none'%3E%3Cg fill='%23fff' opacity='.9'%3E%3Cellipse cx='80' cy='40' rx='60' ry='18'/%3E%3Cellipse cx='110' cy='30' rx='34' ry='14'/%3E%3Cellipse cx='330' cy='60' rx='70' ry='20'/%3E%3Cellipse cx='360' cy='48' rx='36' ry='16'/%3E%3Cellipse cx='560' cy='34' rx='50' ry='16'/%3E%3C/g%3E%3C/svg%3E") repeat-x;background-size:700px 100px;opacity:.9;animation:drift 60s linear infinite;pointer-events:none}
+@keyframes drift{to{background-position-x:700px}}
+.scene .inner{position:relative;padding:28px 16px 18px;text-align:center}
+.scene h1{font-size:44px;color:#fff;text-shadow:0 2px 0 #7a1c1c,0 4px 10px rgba(0,0,0,.35);letter-spacing:.02em}
+.scene .sub{display:inline-block;background:rgba(255,253,246,.88);border:2px solid var(--line);border-radius:10px;padding:8px 14px;margin-top:10px;max-width:720px;font-size:13px;color:#2b2418}
+.map{background:linear-gradient(180deg,#bfe3ff 0%,#dff2c8 18%,#cfe8b0 100%)}
+:root[data-theme="dark"] .map{background:linear-gradient(180deg,#223a55 0%,#2f4a33 18%,#2a3f2a 100%)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .map{background:linear-gradient(180deg,#223a55 0%,#2f4a33 18%,#2a3f2a 100%)}}
+.map svg{min-width:760px}
+.node.open .ring{stroke:var(--accent);stroke-width:3;animation:pulse 1.2s infinite}
+.node.open{cursor:pointer}
+.pdot{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;color:#fff;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);vertical-align:middle}
+.ally{border:1px dashed var(--line);border-radius:10px;padding:6px 8px;margin-top:6px;background:color-mix(in srgb,var(--panel2) 60%,transparent)}
+.allies{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.lobby .seg button{padding:6px 10px}
+.choices button.primary small{color:#ffe9e7}
+.vote{font-size:11px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:0 7px;margin-left:4px}
+.news{font-size:12px;background:var(--panel2);border-radius:8px;padding:6px 10px;margin-top:6px}
+.news li+li{margin-top:2px}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<dialog id="dlg"></dialog>
+
+<script>
+'use strict';
+/* ---------- 데이터 ---------- */
+const KO = {"scratch":{"n":"할퀴기","d":"단단하고 뾰족한 날카로운 손톱으로 상대를 할퀴어서 공격한다."},"ember":{"n":"불꽃세례","d":"작은 불꽃을 상대에게 발사하여 공격한다. 10%의 확률로 상대를 화상 상태로 만든다."},"growl":{"n":"울음소리","d":"귀여운 울음소리를 들려주고 관심을 끌어 방심한 사이에 상대의 공격을 1랭크 떨어뜨린다."},"tackle":{"n":"몸통박치기","d":"상대를 향해서 몸 전체를 부딪쳐가며 공격한다."},"watergun":{"n":"물대포","d":"물을 기세 좋게 상대에게 발사하여 공격한다."},"tailwhip":{"n":"꼬리흔들기","d":"꼬리를 좌우로 귀엽게 흔들어 방심을 유도한다. 상대의 방어를 1랭크 떨어뜨린다."},"vinewhip":{"n":"덩굴채찍","d":"채찍처럼 휘어지는 가늘고 긴 덩굴로 상대를 힘껏 쳐서 공격한다."},"flamethrower":{"n":"화염방사","d":"세찬 불꽃을 상대에게 발사하여 공격한다. 10%의 확률로 상대를 화상 상태로 만든다."},"firefang":{"n":"불꽃엄니","d":"불꽃을 두른 이빨로 문다. 10%의 확률로 상대를 풀죽음 상태로 만들거나 화상 상태로 만든다."},"slash":{"n":"베어가르기","d":"발톱이나 낫 등으로 상대를 베어 갈라서 공격한다. 이 기술이 급소에 맞을 확률은 일반 공격기에 비해 1랭크분 높다."},"dragonbreath":{"n":"용의숨결","d":"굉장한 숨결을 상대에게 내뿜어 공격한다. 30%의 확률로 상대를 마비 상태로 만든다."},"smokescreen":{"n":"연막","d":"연기나 먹물을 내뿜어 상대의 명중률을 1랭크 떨어뜨린다."},"flamewheel":{"n":"화염바퀴","d":"불꽃을 둘러 상대에게 돌진하여 공격한다. 10%의 확률로 상대를 화상 상태로 만든다. 자신이나 상대가 얼음 상태라면 녹일 수 있다."},"metalclaw":{"n":"메탈클로","d":"강철의 발톱으로 상대를 베어 갈라 공격한다. 10%의 확률로 자신의 공격을 1랭크 올린다."},"scaryface":{"n":"겁나는얼굴","d":"무서운 얼굴로 노려보고 겁주어 상대의 스피드를 2랭크 떨어뜨린다."},"inferno":{"n":"연옥","d":"격렬한 불꽃으로 상대를 둘러싸 공격한다. 화상 상태로 만든다."},"firespin":{"n":"회오리불꽃","d":"세차게 소용돌이치는 불꽃 속에 4~5턴 동안 상대를 가두어 공격한다."},"dragonclaw":{"n":"드래곤클로","d":"날카롭고 뾰족한 거대한 발톱으로 상대를 베어 갈라서 공격한다."},"airslash":{"n":"에어슬래시","d":"하늘까지 베어 가르는 공기의 칼날로 공격한다. 30%의 확률로 상대를 풀죽음 상태로 만든다."},"heatwave":{"n":"열풍","d":"뜨거운 숨결을 상대에게 내뿜어 공격한다. 10%의 확률로 상대를 화상 상태로 만든다."},"firepunch":{"n":"불꽃펀치","d":"불꽃을 담은 펀치로 상대를 공격한다. 10%의 확률로 상대를 화상 상태로 만든다."},"bubble":{"n":"거품","d":"매우 많은 거품을 상대에게 내뿜어 공격한다. 10%의 확률로 상대의 스피드를 1랭크 떨어뜨린다."},"bite":{"n":"물기","d":"날카롭고 뾰족한 이빨로 물어서 공격한다. 30%의 확률로 상대를 풀죽음 상태로 만든다."},"withdraw":{"n":"껍질에숨기","d":"껍질에 숨어 몸을 보호하여 자신의 방어를 1랭크 올린다."},"rapidspin":{"n":"고속스핀","d":"회전해서 상대를 공격하여 조이기, 김밥말이, 씨뿌리기 등의 효과를 날려 버리며, 자신의 스피드를 1랭크 올린다."},"waterpulse":{"n":"물의파동","d":"물의 진동을 상대에게 가하여 공격한다. 20%의 확률로 상대를 혼란 상태로 만든다."},"aquatail":{"n":"아쿠아테일","d":"세차게 날뛰는 거친 파도와 같이 큰 꼬리를 흔들어서 상대를 공격한다."},"protect":{"n":"방어","d":"상대의 공격을 전혀 받지 않는다. 연속으로 쓰면 실패하기 쉽다."},"irondefense":{"n":"철벽","d":"피부를 쇠처럼 단단하게 함으로써 자신의 방어를 2랭크 올린다."},"hydropump":{"n":"하이드로펌프","d":"대량의 물을 세찬 기세로 상대에게 발사하여 공격한다."},"skullbash":{"n":"로케트박치기","d":"1턴째에 머리를 움츠려 방어를 올린다. 2턴째에 상대를 공격한다."},"raindance":{"n":"비바라기","d":"5턴 동안 비를 내리게 해서 물타입 기술의 위력을 올린다. 불꽃타입 기술의 위력은 절반이 된다."},"aquaring":{"n":"아쿠아링","d":"몸 주변을 물로 만든 베일로 덮는다. 매 턴마다 최대 HP의 1/16을 회복한다."},"surf":{"n":"파도타기","d":"큰 파도로 자신의 주위에 있는 포켓몬을 공격한다."},"icebeam":{"n":"냉동빔","d":"냉동빔을 상대에게 발사하여 공격한다. 10%의 확률로 상대를 얼음 상태로 만든다."},"leechseed":{"n":"씨뿌리기","d":"대상을 씨뿌리기 상태로 만든다. 사용한 쪽의 포켓몬은 이 상태에 걸린 포켓몬의 HP를 매 턴이 끝날 때마다 최대 HP의 1/8만큼 빼앗아 회복한다."},"poisonpowder":{"n":"독가루","d":"독이 있는 가루를 많이 흩뿌려서 상대를 독 상태로 만든다."},"sleeppowder":{"n":"수면가루","d":"잠이 오는 가루를 많이 흩뿌려서 상대를 잠듦 상태로 만든다."},"razorleaf":{"n":"잎날가르기","d":"잎사귀를 날려 상대를 베어 공격한다. 이 기술이 급소에 맞을 확률은 일반 공격기에 비해 1랭크분 높다."},"growth":{"n":"성장","d":"몸을 일시에 크게 성장시켜 자신의 공격과 특수공격을 1랭크 올린다. 쾌청 상태일 때는 2랭크 올라간다."},"sweetscent":{"n":"달콤한향기","d":"향기로 상대의 회피율을 2랭크 떨어뜨린다."},"seedbomb":{"n":"씨폭탄","d":"단단한 껍질을 가지고 있는 큰 씨앗을 위에서 힘껏 내던져 상대를 공격한다."},"synthesis":{"n":"광합성","d":"자신의 HP를 회복한다. 날씨에 따라 회복량이 변한다."},"solarbeam":{"n":"솔라빔","d":"1턴째에 빛을 가득 모아 2턴째에 빛의 다발을 발사하여 공격한다."},"takedown":{"n":"돌진","d":"굉장한 기세로 상대에게 부딪쳐 공격한다. 자신도 대상에게 준 피해의 1/4만큼 반동 피해를 받는다."},"sludgebomb":{"n":"오물폭탄","d":"더러운 오물을 상대에게 내던져서 공격한다. 30%의 확률로 상대를 독 상태로 만든다."},"doubleedge":{"n":"이판사판태클","d":"목숨을 걸고 상대에게 돌진하여 공격을 한다. 자신도 대상에게 준 피해의 1/3만큼 반동 피해를 받는다."},"gigadrain":{"n":"기가드레인","d":"양분을 흡수하여 공격한다. 입힌 데미지의 절반에 해당하는 HP를 회복할 수 있다."},"sludge":{"n":"오물공격","d":"더러운 오물을 상대에게 내던져서 공격한다. 30%의 확률로 상대를 독 상태로 만든다."},"quickattack":{"n":"전광석화","d":"눈에 보이지 않는 굉장한 속도로 상대에게 돌진한다. 반드시 선제공격할 수 있다."},"gust":{"n":"바람일으키기","d":"날개로 일으킨 격한 바람을 상대에게 부딪쳐서 공격한다."},"wingattack":{"n":"날개치기","d":"크게 펼친 훌륭한 날개를 상대에게 부딪쳐서 공격한다."},"stringshot":{"n":"실뿜기","d":"입에서 뿜어낸 실을 휘감아서 상대의 스피드를 2랭크 떨어뜨린다."},"poisonsting":{"n":"독침","d":"독이 있는 침을 상대에게 꿰찔러서 공격한다. 30%의 확률로 상대를 독 상태로 만든다."},"thundershock":{"n":"전기쇼크","d":"전기 자극을 상대에게 날려서 공격한다. 10%의 확률로 상대를 마비 상태로 만든다."},"thunderwave":{"n":"전기자석파","d":"약한 전격을 날려서 상대를 마비 상태로 만든다."},"sandattack":{"n":"모래뿌리기","d":"상대의 얼굴에 모래를 뿌려서 명중률을 1랭크 떨어뜨린다."},"rockthrow":{"n":"돌떨구기","d":"작은 바위를 들어올려 상대에게 내던져서 공격한다."},"defensecurl":{"n":"웅크리기","d":"몸을 둥글게 웅크려서 자신의 방어를 1랭크 올린다. 사용 후 구르기나 아이스볼을 사용하면 위력이 2배다."},"rollout":{"n":"구르기","d":"5턴 동안 구르기를 반복하여 공격한다. 기술이 맞을 때마다 2배씩 위력이 상승한다."},"confusion":{"n":"염동력","d":"약한 염동력을 상대에게 보내어 공격한다. 10%의 확률로 상대를 혼란 상태로 만든다."},"headbutt":{"n":"박치기","d":"머리를 내밀어 곧장 돌진하여 공격한다. 30%의 확률로 상대를 풀죽음 상태로 만든다."},"hornattack":{"n":"뿔찌르기","d":"날카롭고 뾰족한 뿔로 상대를 공격한다."},"furyattack":{"n":"마구찌르기","d":"뿔이나 부리로 상대를 찔러서 공격한다. 2~5회 동안 연속으로 쓴다."},"swift":{"n":"스피드스타","d":"별 모양의 빛을 발사해서 상대를 공격한다. 공격은 반드시 명중한다."},"hyperfang":{"n":"필살앞니","d":"날카로운 앞니로 강하게 물어서 공격한다. 10%의 확률로 상대를 풀죽음 상태로 만든다."},"bodyslam":{"n":"누르기","d":"몸 전체로 상대를 덮쳐눌러 공격한다. 30%의 확률로 상대를 마비 상태로 만든다."},"dig":{"n":"구멍파기","d":"1턴째에 파고들어 2턴째에 상대를 공격한다."},"leer":{"n":"째려보기","d":"날카로운 눈초리로 겁을 주어 상대의 방어를 1랭크 떨어뜨린다."},"harden":{"n":"단단해지기","d":"전신에 힘을 담아 몸을 단단하게 해서 자신의 방어를 1랭크 올린다."},"leechlife":{"n":"흡혈","d":"피를 빨아서 상대를 공격한다. 준 데미지의 절반을 HP로 회복한다."},"bugbite":{"n":"벌레먹기","d":"물어서 공격한다. 상대가 나무열매를 지니고 있을 때 먹어서 나무열매의 효과를 받을 수 있다."},"thunderbolt":{"n":"10만볼트","d":"강한 전격을 상대에게 날려서 공격한다. 10%의 확률로 상대를 마비 상태로 만든다."},"nuzzle":{"n":"볼부비부비","d":"전기가 흐르는 볼을 비벼서 공격한다. 상대를 마비 상태로 만든다."},"mudslap":{"n":"진흙뿌리기","d":"상대의 얼굴 등에 진흙을 내던져서 공격한다. 상대의 명중률을 1랭크 떨어뜨린다."},"rocktomb":{"n":"암석봉인","d":"암석을 내던져서 공격한다. 상대의 움직임을 봉인함으로 스피드를 1랭크 떨어뜨린다."},"rockslide":{"n":"스톤샤워","d":"큰 바위를 세차게 부딪쳐서 공격한다. 30%의 확률로 상대를 풀죽음 상태로 만든다."},"shockwave":{"n":"전격파","d":"전격을 재빠르게 상대에게 날린다. 공격은 반드시 명중한다."},"hypnosis":{"n":"최면술","d":"졸음을 유도하는 암시를 걸어서 상대를 잠듦 상태로 만든다."},"psybeam":{"n":"환상빔","d":"이상한 광선을 상대에게 발사하여 공격한다. 10%의 확률로 상대를 혼란 상태로 만든다."},"screech":{"n":"싫은소리","d":"그만 귀를 막아버리고 싶은 싫은 소리를 내어 상대의 방어를 2랭크 떨어뜨린다."},"swordsdance":{"n":"칼춤","d":"싸움의 춤을 격렬하게 춰서 기세를 높인다. 자신의 공격을 2랭크 올린다."},"agility":{"n":"고속이동","d":"힘을 빼고 몸을 가볍게 해서 고속으로 움직인다. 자신의 스피드를 2랭크 올린다."},"recover":{"n":"HP회복","d":"세포를 재생시켜 자신의 최대 HP의 절반만큼 HP를 회복한다."},"doublekick":{"n":"두번치기","d":"2개의 다리로 상대를 걷어차서 공격한다. 2회 연속으로 데미지를 준다."},"lowkick":{"n":"안다리걸기","d":"발을 강하게 걸고 상대를 넘어뜨려 공격한다. 상대가 무거울수록 위력이 올라간다."},"karatechop":{"n":"태권당수","d":"날카로운 당수로 상대를 때려서 공격한다. 이 기술이 급소에 맞을 확률은 일반 공격기에 비해 1랭크분 높다."},"brickbreak":{"n":"깨트리기","d":"수도로 기세 좋게 내려쳐서 상대를 공격한다. 빛의장막이나 리플렉터 등도 파괴할 수 있다."},"astonish":{"n":"놀래키기","d":"큰 소리 등으로 불시에 놀래켜서 공격한다. 30%의 확률로 상대를 풀죽음 상태로 만든다."},"lick":{"n":"핥기","d":"긴 혀로 상대를 핥아서 공격한다. 30%의 확률로 상대를 마비 상태로 만든다."},"nightshade":{"n":"나이트헤드","d":"무시무시한 환상을 보게 해서 자신의 레벨과 똑같은 만큼의 데미지를 상대에게 준다."},"bulldoze":{"n":"땅고르기","d":"땅을 힘껏 밟아 자신의 주위에 있는 포켓몬을 공격한다. 상대의 스피드를 1랭크 떨어뜨린다."},"stomp":{"n":"짓밟기","d":"큰 발로 상대를 짓밟아서 공격한다. 30%의 확률로 상대를 풀죽음 상태로 만든다. 대상이 작아지기를 사용한 상태라면 빗나가지 않으며 위력이 2배로 상승한다."},"sunnyday":{"n":"쾌청","d":"5턴 동안 햇살을 강하게 해서 불꽃타입 기술의 위력을 올린다. 물타입 기술의 위력은 절반이 된다."},"sandstorm":{"n":"모래바람","d":"5턴 동안 모래바람을 일으켜 바위, 땅, 강철타입 이외의 상대에게 데미지를 준다. 바위타입의 특수방어를 1랭크 올린다."},"splash":{"n":"튀어오르기","d":"공격도 하지 않고 팔딱팔딱 튈 뿐 아무 일도 일어나지 않는다..."},"earthquake":{"n":"지진","d":"지진의 충격으로 자신의 주위에 있는 포켓몬을 공격한다."},"dragonrage":{"n":"용의분노","d":"분노의 충격파를 상대에게 부딪쳐서 공격한다. 언제나 40의 데미지를 준다."},"nastyplot":{"n":"나쁜음모","d":"나쁜 일을 생각해서 머리를 활성화시킨다. 자신의 특수공격을 크게 올린다."},"calmmind":{"n":"명상","d":"조용히 정신을 통일하고 마음을 가라앉혀서 자신의 특수공격과 특수방어를 1랭크 올린다."},"bulkup":{"n":"벌크업","d":"몸에 힘을 담아 근육을 두껍게 해서 자신의 공격과 방어를 1랭크 올린다."},"toxic":{"n":"맹독","d":"상대를 맹독 상태로 만든다. 상대는 턴이 지날수록 최대 HP의 1/16씩 더 큰 독 데미지를 받는다."},"willowisp":{"n":"도깨비불","d":"으스스하고 괴상한 불꽃을 쏘아 상대를 화상 상태로 만든다."},"amnesia":{"n":"망각술","d":"머리를 비워서 순간적으로 무언가를 잊어버림으로써 자신의 특수방어를 2랭크 올린다."},"twister":{"n":"회오리","d":"회오리를 일으켜 상대를 끌어들여 공격한다. 30%의 확률로 상대를 풀죽음 상태로 만든다. 공중날기 상태인 상대에겐 데미지가 2배가 된다."},"peck":{"n":"쪼기","d":"날카롭고 뾰족한 부리나 뿔로 상대를 쪼아서 공격한다."},"drillpeck":{"n":"회전부리","d":"회전하면서 뾰족한 부리를 상대에게 꿰찔러 공격한다."},"furyswipes":{"n":"마구할퀴기","d":"손톱이나 낫 등으로 상대를 할퀴어서 공격한다. 2~5회 동안 연속으로 쓴다."},"payday":{"n":"고양이돈받기","d":"상대의 몸에 돈을 세게 던져서 공격한다. 배틀 후에 돈을 받을 수 있다."},"thunderfang":{"n":"번개엄니","d":"전기를 모은 이빨로 문다. 10%의 확률로 상대를 마비 상태로 만들거나 풀죽음 상태로 만든다."},"icefang":{"n":"얼음엄니","d":"냉기를 품은 이빨로 문다. 10%의 확률로 상대를 풀죽음 상태로 만들거나 얼음 상태로 만든다."},"crunch":{"n":"깨물어부수기","d":"날카로운 이빨로 상대를 깨물어 부숴서 공격한다. 20%의 확률로 상대방의 방어력을 1랭크 떨어뜨린다."},"irontail":{"n":"아이언테일","d":"단단한 꼬리로 상대를 힘껏 쳐서 공격한다. 30%의 확률로 상대의 방어를 1랭크 떨어뜨린다."},"flareblitz":{"n":"플레어드라이브","d":"불꽃을 두르고 돌진한다. 자신도 대상에게 준 피해의 1/3만큼 반동 피해를 받는다. 10%의 확률로 상대를 화상 상태로 만든다."},"hydrocannon":{"n":"하이드로캐논","d":"물의 대포를 상대에게 발사해서 공격한다. 다음 턴은 움직일 수 없다."},"frenzyplant":{"n":"하드플랜트","d":"큰 나무로 상대를 힘껏 쳐서 공격한다. 다음 턴은 움직일 수 없게 된다."},"uturn":{"n":"유턴","d":"공격한 뒤 굉장한 스피드로 돌아와서 교대 포켓몬과 교체한다."},"voltswitch":{"n":"볼트체인지","d":"공격한 뒤 굉장한 스피드로 돌아와서 교대 포켓몬과 교체한다."},"endure":{"n":"버티기","d":"공격을 받아도 HP를 반드시 1만큼은 남긴다. 연속으로 쓰면 실패하기 쉽다."},"counter":{"n":"카운터","d":"상대로부터 받은 물리공격의 데미지를 2배로 만들어 그 상대에게 돌려준다."}};
+const SPR = {"b1":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/1.gif","b10":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/10.gif","b129":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/129.gif","b13":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/13.gif","b130":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/130.gif","b16":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/16.gif","b17":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/17.gif","b19":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/19.gif","b2":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/2.gif","b21":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/21.gif","b23":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/23.gif","b25":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/25.gif","b27":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/27.gif","b3":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/3.gif","b32":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/32.gif","b4":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/4.gif","b41":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/41.gif","b43":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/43.gif","b46":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/46.gif","b5":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/5.gif","b50":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/50.gif","b52":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/52.gif","b54":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/54.gif","b56":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/56.gif","b6":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/6.gif","b66":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/66.gif","b7":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/7.gif","b74":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/74.gif","b79":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/79.gif","b8":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/8.gif","b81":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/81.gif","b9":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/9.gif","b92":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/92.gif","b95":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/back/95.gif","f1":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/1.gif","f10":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/10.gif","f129":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/129.gif","f13":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/13.gif","f130":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/130.gif","f16":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/16.gif","f17":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/17.gif","f19":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/19.gif","f2":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/2.gif","f21":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/21.gif","f23":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/23.gif","f25":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/25.gif","f27":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/27.gif","f3":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/3.gif","f32":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/32.gif","f4":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/4.gif","f41":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/41.gif","f43":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/43.gif","f46":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/46.gif","f5":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/5.gif","f50":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/50.gif","f52":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/52.gif","f54":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/54.gif","f56":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/56.gif","f6":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/6.gif","f66":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/66.gif","f7":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/7.gif","f74":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/74.gif","f79":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/79.gif","f8":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/8.gif","f81":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/81.gif","f9":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/9.gif","f92":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/92.gif","f95":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/95.gif","i_exp-share":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/exp-share.png","i_focus-sash":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/focus-sash.png","i_lansat-berry":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lansat-berry.png","i_leftovers":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png","i_life-orb":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png","i_lum-berry":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lum-berry.png","i_oran-berry":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/oran-berry.png","i_poke-ball":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png","i_quick-claw":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/quick-claw.png","i_shell-bell":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shell-bell.png","i_sitrus-berry":"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sitrus-berry.png"};
+const DEX={charmander:4,charmeleon:5,charizard:6,squirtle:7,wartortle:8,blastoise:9,bulbasaur:1,ivysaur:2,venusaur:3,pidgey:16,pidgeotto:17,rattata:19,caterpie:10,weedle:13,pikachu:25,sandshrew:27,nidoranm:32,paras:46,zubat:41,diglett:50,meowth:52,geodude:74,slowpoke:79,magnemite:81,mankey:56,oddish:43,ekans:23,spearow:21,gastly:92,machop:66,psyduck:54,magikarp:129,gyarados:130,onix:95};
+const ICON={leftovers:'leftovers',focussash:'focus-sash',lifeorb:'life-orb',shellbell:'shell-bell',quickclaw:'quick-claw',expshare:'exp-share',oran:'oran-berry',sitrus:'sitrus-berry',lum:'lum-berry',lansat:'lansat-berry',ball:'poke-ball'};
+const TYPES={normal:['노말','#9a9a70'],fire:['불꽃','#ee8130'],water:['물','#6390f0'],grass:['풀','#5fb63a'],electric:['전기','#e0b800'],ice:['얼음','#5fb9b5'],fighting:['격투','#c22e28'],poison:['독','#a33ea1'],ground:['땅','#c9a24f'],flying:['비행','#8f7ae6'],psychic:['에스퍼','#f95587'],bug:['벌레','#8fa31a'],rock:['바위','#a28f2c'],ghost:['고스트','#735797'],dragon:['드래곤','#6f35fc'],dark:['악','#705746'],steel:['강철','#8f8fb0'],fairy:['페어리','#d685ad']};
+const CHART={normal:{w:['rock','steel'],i:['ghost']},fire:{s:['grass','ice','bug','steel'],w:['fire','water','rock','dragon']},water:{s:['fire','ground','rock'],w:['water','grass','dragon']},grass:{s:['water','ground','rock'],w:['fire','grass','poison','flying','bug','dragon','steel']},electric:{s:['water','flying'],w:['electric','grass','dragon'],i:['ground']},ice:{s:['grass','ground','flying','dragon'],w:['fire','water','ice','steel']},fighting:{s:['normal','ice','rock','dark','steel'],w:['poison','flying','psychic','bug','fairy'],i:['ghost']},poison:{s:['grass','fairy'],w:['poison','ground','rock','ghost'],i:['steel']},ground:{s:['fire','electric','poison','rock','steel'],w:['grass','bug'],i:['flying']},flying:{s:['grass','fighting','bug'],w:['electric','rock','steel']},psychic:{s:['fighting','poison'],w:['psychic','steel'],i:['dark']},bug:{s:['grass','psychic','dark'],w:['fire','fighting','poison','flying','ghost','steel','fairy']},rock:{s:['fire','ice','flying','bug'],w:['fighting','ground','steel']},ghost:{s:['psychic','ghost'],w:['dark'],i:['normal']},dragon:{s:['dragon'],w:['steel'],i:['fairy']},dark:{s:['psychic','ghost'],w:['fighting','dark','fairy']},steel:{s:['ice','rock','fairy'],w:['fire','water','electric','steel']},fairy:{s:['fighting','dragon','dark'],w:['fire','poison','steel']}};
+
+// 기술 카드 정의. dmg = round(위력×0.15), 코스트는 기획서 3.5 규칙. fx = 효과 목록.
+// S:상태이상(p 확률) R:랭크(who self/enemy, st atk/def/spd) B:방어 D:드로우 H:회복 DR:흡수 RC:반동 X:소멸 SW:교체 CAP:포획 LS:씨뿌리기 AQ:아쿠아링 W:날씨 NA:다음공격 CH:충전 RE:재충전 V:허점 FL:풀죽음 FIX:고정피해 RET:보존 NONE
+const M={};
+function mv(id,type,cat,cost,dmg,fx,o){M[id]=Object.assign({id,type,cat,cost,dmg,fx:fx||[],hits:1,acc:100,pri:0,rare:0},o||{});}
+mv('scratch','normal','p',1,6); mv('tackle','normal','p',1,6); mv('ember','fire','s',1,6,[{k:'S',s:'burn',p:.1}]);
+mv('growl','normal','x',1,0,[{k:'R',who:'e',st:'atk',v:-1}]); mv('tailwhip','normal','x',1,0,[{k:'R',who:'e',st:'def',v:-1}]);
+mv('leer','normal','x',1,0,[{k:'R',who:'e',st:'def',v:-1}]); mv('watergun','water','s',1,6); mv('vinewhip','grass','p',1,7);
+mv('flamethrower','fire','s',2,14,[{k:'S',s:'burn',p:.1}],{rare:1}); mv('firefang','fire','p',2,10,[{k:'S',s:'burn',p:.1},{k:'FL',p:.1}]);
+mv('slash','normal','p',2,10,[{k:'V',v:1,p:.3}]); mv('dragonbreath','dragon','s',2,9,[{k:'S',s:'para',p:.3}]);
+mv('smokescreen','normal','x',1,0,[{k:'R',who:'e',st:'atk',v:-1},{k:'B',v:3}]); mv('flamewheel','fire','p',2,9,[{k:'S',s:'burn',p:.1}]);
+mv('metalclaw','steel','p',2,8,[{k:'R',who:'s',st:'atk',v:1,p:.3}]); mv('scaryface','normal','x',1,0,[{k:'R',who:'e',st:'spd',v:-2},{k:'FL',p:1}]);
+mv('inferno','fire','s',3,15,[{k:'S',s:'burn',p:1}],{acc:50,rare:1}); mv('firespin','fire','s',1,5,[{k:'S',s:'burn',p:.3}],{acc:85});
+mv('dragonclaw','dragon','p',2,12,null,{rare:1}); mv('airslash','flying','s',2,11,[{k:'FL',p:.3}],{acc:95,rare:1}); mv('heatwave','fire','s',2,14,[{k:'S',s:'burn',p:.1}],{acc:90,rare:1,all:1});
+mv('firepunch','fire','p',2,11,[{k:'S',s:'burn',p:.1}]); mv('bubble','water','s',1,6,[{k:'R',who:'e',st:'spd',v:-1,p:.3}]);
+mv('bite','dark','p',2,9,[{k:'FL',p:.3}]); mv('withdraw','water','x',1,0,[{k:'R',who:'s',st:'def',v:1},{k:'B',v:4}]);
+mv('rapidspin','normal','p',2,8,[{k:'R',who:'s',st:'spd',v:1},{k:'CLR'}]); mv('waterpulse','water','s',2,9,[{k:'FL',p:.2}]);
+mv('aquatail','water','p',2,14,null,{acc:90,rare:1}); mv('protect','normal','x',1,0,[{k:'B',v:9}],{pri:4});
+mv('irondefense','steel','x',1,0,[{k:'R',who:'s',st:'def',v:2}]); mv('hydropump','water','s',3,16,null,{acc:80,rare:1});
+mv('skullbash','normal','p',3,20,[{k:'CH'},{k:'R',who:'s',st:'def',v:1}],{rare:1}); mv('raindance','water','x',1,0,[{k:'W',w:'rain'}]);
+mv('aquaring','water','x',1,0,[{k:'AQ'},{k:'X'}]); mv('surf','water','s',2,14,null,{rare:1,all:1}); mv('icebeam','ice','s',2,14,[{k:'S',s:'para',p:.1}],{rare:1});
+mv('leechseed','grass','x',1,0,[{k:'LS'}],{acc:90}); mv('poisonpowder','poison','x',1,0,[{k:'S',s:'poison',v:4,p:1}],{acc:75});
+mv('sleeppowder','grass','x',1,0,[{k:'S',s:'sleep',p:1}],{acc:75}); mv('razorleaf','grass','p',2,8,[{k:'V',v:1,p:.3}],{acc:95,all:1});
+mv('growth','normal','x',1,0,[{k:'R',who:'s',st:'atk',v:1},{k:'D',v:1}]); mv('sweetscent','normal','x',1,0,[{k:'V',v:2,p:1}]);
+mv('seedbomb','grass','p',2,12,null,{rare:1}); mv('synthesis','grass','x',2,0,[{k:'H',v:25},{k:'X'}],{rare:1});
+mv('solarbeam','grass','s',3,18,[{k:'CH'}],{rare:1}); mv('takedown','normal','p',1,14,[{k:'RC',v:.25}],{acc:85});
+mv('sludgebomb','poison','s',2,14,[{k:'S',s:'poison',v:3,p:.3}],{rare:1}); mv('doubleedge','normal','p',2,18,[{k:'RC',v:.33}],{rare:1});
+mv('gigadrain','grass','s',2,11,[{k:'DR',v:.5}],{rare:1}); mv('sludge','poison','s',2,10,[{k:'S',s:'poison',v:3,p:.3}]);
+mv('quickattack','normal','p',0,6,null,{pri:1}); mv('gust','flying','s',1,6); mv('wingattack','flying','p',2,9);
+mv('stringshot','bug','x',1,0,[{k:'R',who:'e',st:'spd',v:-2}],{acc:95}); mv('poisonsting','poison','p',1,2,[{k:'S',s:'poison',v:3,p:.3}]);
+mv('thundershock','electric','s',1,6,[{k:'S',s:'para',p:.1}]); mv('thunderwave','electric','x',1,0,[{k:'S',s:'para',p:1}],{acc:90});
+mv('sandattack','ground','x',1,0,[{k:'R',who:'e',st:'atk',v:-1}]); mv('rockthrow','rock','p',2,8,null,{acc:90});
+mv('defensecurl','normal','x',1,0,[{k:'R',who:'s',st:'def',v:1},{k:'B',v:3}]); mv('rollout','rock','p',1,4,[{k:'NA',v:2}],{acc:90});
+mv('confusion','psychic','s',2,8,[{k:'FL',p:.1}]); mv('headbutt','normal','p',2,10,[{k:'FL',p:.3}]); mv('hornattack','normal','p',2,10);
+mv('furyattack','normal','p',1,2,null,{hits:3,acc:85}); mv('swift','normal','s',2,9); mv('hyperfang','normal','p',2,12,[{k:'FL',p:.1}],{acc:90});
+mv('bodyslam','normal','p',2,13,[{k:'S',s:'para',p:.3}],{rare:1}); mv('dig','ground','p',2,12,[{k:'CH'},{k:'B',v:6}]);
+mv('harden','normal','x',1,0,[{k:'R',who:'s',st:'def',v:1}]); mv('leechlife','bug','p',2,12,[{k:'DR',v:.5}],{rare:1});
+mv('bugbite','bug','p',2,9,[{k:'H',v:3}]); mv('thunderbolt','electric','s',2,14,[{k:'S',s:'para',p:.1}],{rare:1});
+mv('nuzzle','electric','p',1,3,[{k:'S',s:'para',p:1}]); mv('mudslap','ground','s',1,3,[{k:'R',who:'e',st:'atk',v:-1}]);
+mv('rocktomb','rock','p',2,9,[{k:'R',who:'e',st:'spd',v:-1}],{acc:95}); mv('rockslide','rock','p',2,11,[{k:'FL',p:.3}],{acc:90,rare:1,all:1});
+mv('shockwave','electric','s',2,9); mv('hypnosis','psychic','x',1,0,[{k:'S',s:'sleep',p:1}],{acc:60});
+mv('psybeam','psychic','s',2,10,[{k:'FL',p:.1}]); mv('screech','normal','x',1,0,[{k:'R',who:'e',st:'def',v:-2}],{acc:85});
+mv('swordsdance','normal','x',2,0,[{k:'R',who:'s',st:'atk',v:2}],{rare:1}); mv('agility','psychic','x',1,0,[{k:'R',who:'s',st:'spd',v:2}]);
+mv('recover','normal','x',2,0,[{k:'HP',v:.5},{k:'X'}],{rare:1}); mv('doublekick','fighting','p',1,4,null,{hits:2});
+mv('lowkick','fighting','p',1,8); mv('karatechop','fighting','p',2,8,[{k:'V',v:1,p:.3}]); mv('brickbreak','fighting','p',2,11,[{k:'BRK'}]);
+mv('astonish','ghost','p',1,4,[{k:'FL',p:.3}]); mv('lick','ghost','p',1,4,[{k:'S',s:'para',p:.3}]); mv('nightshade','ghost','s',1,0,[{k:'FIX',v:8}]);
+mv('bulldoze','ground','p',2,9,[{k:'R',who:'e',st:'spd',v:-1}],{all:1}); mv('stomp','normal','p',2,10,[{k:'FL',p:.3}]);
+mv('sunnyday','fire','x',1,0,[{k:'W',w:'sun'}]); mv('sandstorm','rock','x',1,0,[{k:'W',w:'sand'}]); mv('splash','normal','x',1,0,[{k:'NONE'}]);
+mv('earthquake','ground','p',3,15,null,{rare:1,all:1}); mv('dragonrage','dragon','s',1,0,[{k:'FIX',v:8}]);
+mv('nastyplot','dark','x',2,0,[{k:'R',who:'s',st:'atk',v:2}],{rare:1}); mv('calmmind','psychic','x',1,0,[{k:'R',who:'s',st:'atk',v:1},{k:'R',who:'s',st:'def',v:1}]);
+mv('bulkup','fighting','x',1,0,[{k:'R',who:'s',st:'atk',v:1},{k:'R',who:'s',st:'def',v:1}]); mv('toxic','poison','x',1,0,[{k:'S',s:'toxic',v:3,p:1}],{acc:90});
+mv('willowisp','fire','x',1,0,[{k:'S',s:'burn',p:1}],{acc:85}); mv('amnesia','psychic','x',1,0,[{k:'R',who:'s',st:'def',v:2}]);
+mv('twister','dragon','s',1,6,[{k:'FL',p:.3}]); mv('peck','flying','p',1,5); mv('drillpeck','flying','p',2,12,null,{rare:1});
+mv('furyswipes','normal','p',1,3,null,{hits:3,acc:80}); mv('payday','normal','p',1,6,[{k:'GOLD',v:5}]);
+mv('thunderfang','electric','p',2,10,[{k:'S',s:'para',p:.1},{k:'FL',p:.1}],{acc:95}); mv('icefang','ice','p',2,10,[{k:'FL',p:.1}],{acc:95});
+mv('crunch','dark','p',2,12,[{k:'R',who:'e',st:'def',v:-1,p:.2}],{rare:1}); mv('irontail','steel','p',3,15,[{k:'R',who:'e',st:'def',v:-1,p:.3}],{acc:75});
+mv('flareblitz','fire','p',2,18,[{k:'RC',v:.33},{k:'S',s:'burn',p:.1}],{rare:1}); mv('hydrocannon','water','s',3,22,[{k:'RE'}],{acc:90,rare:1});
+mv('frenzyplant','grass','s',3,22,[{k:'RE'}],{acc:90,rare:1}); mv('uturn','bug','p',2,10,[{k:'SW'}]); mv('voltswitch','electric','s',2,10,[{k:'SW'}]);
+mv('endure','normal','x',0,0,[{k:'B',v:4},{k:'D',v:1}]); mv('counter','fighting','p',1,0,[{k:'CNT'}],{pri:-5});
+// 트레이너 카드 (신규 정의)
+const T={};
+function tc(id,name,cost,fx,desc,o){T[id]=Object.assign({id,name,type:'trainer',cat:'t',cost,dmg:0,fx,desc,hits:1,acc:100,pri:0,rare:0},o||{});}
+tc('guard','방어',1,[{k:'B',v:5}],'방어 5.');
+tc('cheer','응원',0,[{k:'D',v:2},{k:'X'}],'카드 2장 드로우. 소멸.');
+tc('switch','교체',1,[{k:'SW'},{k:'D',v:1}],'벤치 포켓몬과 교체하고 1장 드로우.',{modeA:1});
+tc('retreat','후퇴',0,[{k:'B',v:3},{k:'SW'}],'방어 3을 얻고 교체.',{modeA:1});
+tc('potion','상처약',1,[{k:'H',v:20},{k:'X'}],'HP 20 회복. 소멸.');
+tc('order','작전 지시',0,[{k:'NA',v:1.5}],'다음 공격 카드 피해 +50%.');
+tc('pokeball','몬스터볼 던지기',2,[{k:'CAP'}],'야생 포켓몬 포획 시도. 몬스터볼 1개 소모. 남은 HP가 적을수록 성공.',{rare:1});
+tc('splashc','튀어오르기',1,[{k:'NONE'}],'잉어킹이 튀어오른다. 아무 일도 일어나지 않는다...');
+const TRAINER_POOL=['guard','cheer','potion','order','switch','retreat'];
+
+const SP={};
+function sp(id,ko,types,hp,atk,def,spa,catchR,moves,pool,o){SP[id]=Object.assign({id,ko,types,hp,atk,def,spa,catchR,moves,pool:pool||moves},o||{});}
+sp('charmander','파이리',['fire'],39,52,43,60,45,['scratch','ember','growl'],['ember','smokescreen','dragonbreath','firefang','slash','flamewheel','scaryface','metalclaw','firespin','flamethrower','inferno','firepunch','dragonclaw','heatwave','flareblitz'],{abil:'blaze',evo:{to:'charmeleon',floor:5}});
+sp('charmeleon','리자드',['fire'],58,64,58,80,45,['scratch','ember','slash'],SP.charmander.pool,{abil:'blaze',evo:{to:'charizard',floor:8}});
+sp('charizard','리자몽',['fire','flying'],78,84,78,109,45,['slash','flamethrower','airslash'],SP.charmander.pool.concat(['airslash','dragonclaw']),{abil:'blaze'});
+sp('squirtle','꼬부기',['water'],44,48,65,50,45,['tackle','watergun','tailwhip'],['watergun','bubble','withdraw','bite','rapidspin','waterpulse','protect','aquatail','irondefense','skullbash','hydropump','raindance','aquaring','surf','icebeam','hydrocannon'],{abil:'torrent',evo:{to:'wartortle',floor:5}});
+sp('wartortle','어니부기',['water'],59,63,80,65,45,['tackle','watergun','bite'],SP.squirtle.pool,{abil:'torrent',evo:{to:'blastoise',floor:8}});
+sp('blastoise','거북왕',['water'],79,83,100,85,45,['bite','surf','hydropump'],SP.squirtle.pool,{abil:'torrent'});
+sp('bulbasaur','이상해씨',['grass','poison'],45,49,49,65,45,['tackle','vinewhip','growl'],['vinewhip','leechseed','poisonpowder','sleeppowder','razorleaf','growth','sweetscent','seedbomb','synthesis','solarbeam','takedown','sludgebomb','doubleedge','gigadrain','frenzyplant'],{abil:'overgrow',evo:{to:'ivysaur',floor:5}});
+sp('ivysaur','이상해풀',['grass','poison'],60,62,63,80,45,['vinewhip','razorleaf','leechseed'],SP.bulbasaur.pool,{abil:'overgrow',evo:{to:'venusaur',floor:8}});
+sp('venusaur','이상해꽃',['grass','poison'],80,82,83,100,45,['razorleaf','seedbomb','sludgebomb'],SP.bulbasaur.pool,{abil:'overgrow'});
+// 1막 야생
+sp('pidgey','구구',['normal','flying'],40,45,40,35,255,['tackle','gust','sandattack','quickattack'],null,{evo:{to:'pidgeotto',floor:5}});
+sp('pidgeotto','피죤',['normal','flying'],63,60,55,50,120,['gust','quickattack','wingattack','airslash']);
+sp('rattata','꼬렛',['normal'],30,56,35,25,255,['tackle','quickattack','hyperfang','tailwhip']);
+sp('caterpie','캐터피',['bug'],45,30,35,20,255,['tackle','stringshot','bugbite']);
+sp('weedle','뿔충이',['bug','poison'],40,35,30,20,255,['poisonsting','stringshot','bugbite']);
+sp('pikachu','피카츄',['electric'],35,55,40,50,190,['thundershock','quickattack','thunderwave','nuzzle'],['thundershock','quickattack','thunderwave','nuzzle','thunderbolt','agility','voltswitch'],{abil:'static'});
+sp('sandshrew','모래두지',['ground'],50,75,85,20,255,['scratch','sandattack','defensecurl','rollout'],['scratch','sandattack','defensecurl','rollout','dig','bulldoze','swordsdance']);
+sp('nidoranm','니드런♂',['poison'],46,57,40,40,235,['peck','hornattack','poisonsting','doublekick'],['peck','hornattack','poisonsting','doublekick','toxic']);
+sp('paras','파라스',['bug','grass'],35,70,55,45,190,['scratch','poisonpowder','leechlife'],['scratch','poisonpowder','leechlife','sleeppowder','growth']);
+sp('zubat','주뱃',['poison','flying'],40,45,35,30,255,['astonish','wingattack','leechlife'],['astonish','wingattack','leechlife','bite','toxic']);
+sp('diglett','디그다',['ground'],10,55,25,35,255,['mudslap','scratch','dig'],['mudslap','scratch','dig','bulldoze','earthquake']);
+sp('meowth','나옹',['normal'],40,45,35,40,255,['scratch','payday','bite','furyswipes'],['scratch','payday','bite','furyswipes','nastyplot']);
+sp('geodude','꼬마돌',['rock','ground'],40,80,100,30,255,['tackle','defensecurl','rockthrow','rollout'],['tackle','defensecurl','rockthrow','rollout','rocktomb','bulldoze','rockslide']);
+sp('slowpoke','야돈',['water','psychic'],90,65,65,40,190,['tackle','watergun','confusion'],['tackle','watergun','confusion','amnesia','psybeam','surf']);
+sp('magnemite','코일',['electric','steel'],25,35,70,95,190,['tackle','thundershock','thunderwave'],['tackle','thundershock','thunderwave','shockwave','metalclaw','thunderbolt']);
+sp('mankey','망키',['fighting'],40,80,35,35,190,['scratch','karatechop','lowkick'],['scratch','karatechop','lowkick','bulkup','brickbreak','counter']);
+sp('oddish','뚜벅쵸',['grass','poison'],45,50,55,75,255,['tackle','poisonpowder','sweetscent'],['tackle','poisonpowder','sweetscent','sleeppowder','gigadrain','sludge']);
+sp('ekans','아보',['poison'],35,60,44,40,255,['poisonsting','bite','leer'],['poisonsting','bite','leer','toxic','sludge','crunch']);
+sp('spearow','깨비참',['normal','flying'],40,60,30,31,255,['peck','growl','furyattack'],['peck','growl','furyattack','drillpeck','agility']);
+sp('gastly','고오스',['ghost','poison'],30,35,30,100,190,['lick','astonish','hypnosis','nightshade'],['lick','astonish','hypnosis','nightshade','sludge','willowisp']);
+sp('machop','알통몬',['fighting'],70,80,50,35,180,['karatechop','lowkick','leer'],['karatechop','lowkick','leer','bulkup','brickbreak','counter']);
+sp('psyduck','고라파덕',['water'],50,52,48,65,190,['scratch','watergun','confusion'],['scratch','watergun','confusion','psybeam','surf','calmmind']);
+sp('magikarp','잉어킹',['water'],20,10,55,15,255,['splash'],['splash'],{evo:{to:'gyarados',floor:6}});
+sp('gyarados','갸라도스',['water','flying'],95,125,79,60,45,['bite','aquatail','crunch'],['bite','aquatail','crunch','icefang','hydropump','twister','dragonrage']);
+sp('onix','롱스톤',['rock','ground'],35,45,160,30,45,['tackle','rockthrow','rocktomb','screech','bulldoze']);
+const ABIL={blaze:['맹화','HP가 1/3 이하면 불꽃 카드 피해 +50%'],torrent:['급류','HP가 1/3 이하면 물 카드 피해 +50%'],overgrow:['심록','HP가 1/3 이하면 풀 카드 피해 +50%'],static:['정전기','물리 기술에 맞으면 30%로 상대를 마비']};
+const STARTERS=[
+ {sp:'charmander',deck:['scratch','scratch','scratch','scratch','guard','guard','guard','ember','growl','cheer'],berry:'oran',arche:'저HP 폭발력 · 화상'},
+ {sp:'squirtle',deck:['tackle','tackle','tackle','tackle','guard','guard','guard','watergun','tailwhip','cheer'],berry:'oran',arche:'방어 · 철벽 · 버티기'},
+ {sp:'bulbasaur',deck:['tackle','tackle','tackle','tackle','guard','guard','guard','vinewhip','growl','cheer'],berry:'oran',arche:'씨뿌리기 · 독 · 가루 지속 피해'}];
+const WILD_EARLY=['pidgey','rattata','caterpie','weedle','spearow','oddish','ekans'];
+const WILD_MID=['pikachu','sandshrew','nidoranm','paras','zubat','diglett','meowth','mankey','geodude','magnemite','gastly','psyduck'];
+const WILD_LATE=['machop','slowpoke','geodude','pikachu','zubat','gastly'];
+const TRAINERS=[{name:'벌레잡기소년 민수',mons:['caterpie','weedle'],line:'내 벌레 포켓몬이 얼마나 멋진지 보여 주겠어!'},{name:'꼬마 지우',mons:['rattata','pidgey'],line:'반바지는 편하고 좋아!'},{name:'미니스커트 유리',mons:['pikachu','oddish'],line:'귀여운 포켓몬이 최고야!'},{name:'등산가 철수',mons:['geodude','machop'],line:'산을 오르다 보면 강해지지!'},{name:'괴짜 로켓단',mons:['ekans','zubat'],line:'나야 나, 로켓단의 똘마니!'}];
+const BOSS={name:'관장 웅',mons:['geodude','onix'],line:'나는 회색시티 체육관 관장 웅! 바위처럼 단단한 포켓몬으로 상대해 주지.',gimmick:'sand',badge:'회색배지'};
+const ITEMS={leftovers:['먹다남은음식','턴 시작마다 앞에 있는 포켓몬 HP 2 회복',150],focussash:['기합의띠','전투마다 1회, 쓰러질 피해를 HP 1로 견딤',200],lifeorb:['생명의구슬','공격 카드 피해 +30%, 공격 카드를 쓸 때 HP 1 소모',200],shellbell:['조개껍질방울','공격 카드로 피해를 줄 때 HP 2 회복',150],quickclaw:['선제의손톱','전투 첫 턴 드로우 +2',120],expshare:['학습장치','전투 승리 시 받는 원 +10',120]};
+const BERRIES={oran:['오랭열매','HP 10 회복',40],sitrus:['자뭉열매','최대 HP의 25% 회복',70],lum:['모과열매','상태이상 모두 해제',50],lansat:['캄라열매','이번 턴 에너지 +1',60]};
+const PCOL=['#d9302b','#2f6fd6','#2e8b57','#b8860b'];
+const BOT_NAMES=['민수','유리','철수'];
+// 적 HP 배율·피해 배율 [HP, 피해] — 모드별. 무작위 봇 시뮬레이션으로 맞춘 값.
+var COOP={switch:{wild:[.35,.18],tr:[.85,.45],boss:[.9,.45]},field:{wild:[.55,.3],tr:[1.3,.7],boss:[1.7,.9]}}; /* 협동 인원 1명당 [HP, 피해] 증가율, 파티 방식별 (야생은 마리 수도 인원만큼) */
+var BAL={switch:{wild:[1.1,1.35],trainer:[1.4,1.5],elite:[1.7,1.6],boss:[2.6,2.0]},field:{wild:[1.1,1.25],trainer:[1.1,1.2],elite:[1.3,1.3],boss:[1.6,1.2]}};
+const PLACES=['1번도로','상록숲 입구','상록숲','2번도로','월견산 기슭','월견산 동굴','회색시티','회색체육관'];
+const NODE_TXT={wild:['풀숲을 헤쳐 간다','야생 포켓몬이 튀어나올 것 같다'],trainer:['트레이너의 시선이 느껴진다','눈이 마주치면 대전!'],event:['무언가 반짝인다','무슨 일이 생길지 모른다'],rest:['포켓몬센터','회복 · 훈련 · 진화'],shop:['프렌들리숍','카드 · 도구 · 열매 · 몬스터볼'],treasure:['보물상자','지닌 도구 3택1'],boss:['체육관','관장에게 도전한다']};
+const NODE_ICON={wild:'草',trainer:'!',event:'?',rest:'+',shop:'$',treasure:'★',boss:'◆'};
+const TERRAIN=['route','forest','forest','route','mount','cave','city','gym'];
+const TCOL={route:['#a8d978','#8cc45e'],forest:['#5f9a4a','#3f7a35'],mount:['#d8c9a0','#bca779'],cave:['#5a5f6e','#434857'],city:['#d9d4c7','#c3bdae'],gym:['#cfc9bb','#b9b2a3']};
+const placeOf=(floor)=>PLACES[clamp(floor-1,0,7)];
+/* 이벤트: [제목, 본문, 선택지[[라벨,키]], 봇 선택, 출현 층(선택)] */
+const EVENTS={
+ forget:{t:'기술 잊기 할아버지',d:'"기술을 잊고 싶은 포켓몬이 있느냐? 잊는 것도 강해지는 길이란다."',c:(r)=>[['카드 1장 제거 (무료)','rm1'],['카드 2장 제거 (앞 포켓몬 HP -7)','rm2'],['지나간다','leave']],bot:'rm1'},
+ fisher:{t:'낚시꾼 아저씨',d:'"낡은 낚싯대를 빌려주지. 뭐가 낚일지는 나도 몰라!"',c:(r)=>[['낚시한다 (60% 물 포켓몬 동료, 40% 잉어킹...)','fish'],['거절한다','leave']],bot:'fish'},
+ camper:{t:'쉬는 트레이너',d:'모닥불을 쬐던 트레이너가 손짓한다. "같이 쉴래? 아니면... 한판 할래?"',c:(r)=>[['같이 쉰다 (파티 HP 15% 회복)','camp'],['대전을 신청한다 (엘리트: 도구+희귀 카드, 위험)','elite']],bot:'camp'},
+ thief:{t:'로켓단 똘마니',d:'"가진 도구를 내놓으면 곱게 보내 주지!"',c:(r)=>[[r.items.length?'도구 1개를 넘긴다':'돈 30원을 넘긴다','give'],['싸운다 (앞 포켓몬 HP -12, 40원 획득)','fight']],bot:'fight'},
+ mossrock:{t:'이끼 낀 바위',d:'이끼로 덮인 커다란 바위. 이상한 기운이 느껴진다.',c:(r)=>[[r.party.some(canEvolve)?'바위에 손을 댄다 (진화 가능한 포켓몬 1마리 진화)':'바위를 살펴본다 (원 20)','rock'],['지나간다','leave']],bot:'rock',where:[1,2,3]},
+ dojo:{t:'체육관 수련생',d:'"관장님의 제자다! 수련하고 갈래? 좀 아플 텐데."',c:(r)=>[['수련한다 (카드 1장 강화, 앞 포켓몬 HP -8)','train'],['거절한다','leave']],bot:'train'},
+ nurse:{t:'출장 간호순이',d:'"포켓몬센터가 멀어서 순회 진료 중이에요. 어떤 치료를 할까요?"',c:(r)=>[['한 마리 완전 회복 (가장 지친 포켓몬)','healone'],['전원 20% 회복','healall']],bot:'healall'},
+ berrytree:{t:'열매 나무',d:'가지가 휘도록 열매가 열렸다. 흔들면 더 떨어질 것 같지만, 벌레 포켓몬이 숨어 있을지도.',c:(r)=>[['열매 1개를 딴다','berry1'],['세게 흔든다 (열매 2개, 40%로 야생 벌레 포켓몬과 전투)','shake'],['지나간다','leave']],bot:'berry1',where:[1,2,3,4]},
+ moonstone:{t:'달의돌',d:'동굴 바닥에서 희미하게 빛나는 돌. 포켓몬이 이 빛에 반응한다.',c:(r)=>[[r.party.some(m=>SP[m.sp].evo)?'돌을 쓴다 (진화 조건 무시하고 1마리 진화)':'돌을 줍는다 (80원에 팔린다)','moon'],['지나간다','leave']],bot:'moon',where:[5,6]},
+ eggman:{t:'알 배달원',d:'"이 알, 대신 좀 맡아 주겠어? 두 번만 더 전투하면 부화할 거야."',c:(r)=>[['알을 맡는다 (전투 2회 후 부화)','egg'],['거절한다','leave']],bot:'egg'},
+ karpman:{t:'잉어킹 장수',d:'"이 잉어킹, 단돈 50원! 나중에 분명 크게 될 녀석이라니까!"',c:(r)=>[[r.money>=50?'산다 (50원, 잉어킹 동료)':'돈이 없다...','buykarp'],['거절한다','leave']],bot:'buykarp'},
+ gift:{t:'이상한 소포',d:'길가에 떨어진 소포. 수신인이 없다.',c:(r)=>[['열어 본다 (도구 / 돈 / 꽝)','open'],['우체통에 넣는다 (원 10)','post']],bot:'open'},
+ stray:{t:'버려진 포켓몬',d:'풀숲에서 지친 포켓몬이 바라본다. 트레이너에게 버려진 듯하다.',c:(r)=>[[r.party.length<3?'데려간다 (HP 30%로 동료)':'기술 카드만 배운다','adopt'],['지나간다','leave']],bot:'adopt',where:[2,3,4]},
+ rival:{t:'라이벌 그린',d:'"어이, 아직도 그런 파티냐? 내 포켓몬과 한번 붙어 볼래?"',c:(r)=>[['승부한다 (엘리트 전투, 희귀 카드+도구)','elite'],['무시한다 (그린이 비웃는다)','leave']],bot:'leave',where:[4,5,6]},
+ trade:{t:'교환 트레이너',d:'"네 기술 카드 한 장이랑 내 희귀 카드를 바꾸자."',c:(r)=>[['교환한다 (카드 1장 제거 → 같은 포켓몬 희귀 카드)','trade'],['거절한다','leave']],bot:'trade'},
+ hotspring:{t:'숨겨진 온천',d:'바위 틈에서 김이 오른다. 포켓몬들이 좋아할 것 같다.',c:(r)=>[['몸을 담근다 (전원 40% 회복, 상태이상 해제)','bath'],['지나간다','leave']],bot:'bath',where:[5,6]}
+};
+
+/* ---------- 유틸 ---------- */
+const R=(n)=>Math.floor(Math.random()*n), pick=(a)=>a[R(a.length)], chance=(p)=>Math.random()<p, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const shuffle=(a)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=R(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;};
+let UID=1; const uid=()=>UID++;
+const esc=(s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function def(c){ if(T[c.id]) return T[c.id]; return M[c.id]; }
+function cname(c){ const d=def(c); const n=T[c.id]?d.name:(KO[c.id]?KO[c.id].n:c.id); return n+(c.up?' (숙련)':''); }
+function ccost(c){ const d=def(c); let v=d.cost; if(c.up&&d.cat!=='p'&&d.cat!=='s'&&!(d.fx.some(f=>f.k==='B'||f.k==='H'))) v=Math.max(0,v-1); return v; }
+function cdmg(c){ const d=def(c); if(!d.dmg) return 0; return d.dmg+(c.up?3:0); }
+function fxv(c,k){ const d=def(c); const f=d.fx.find(f=>f.k===k); if(!f) return 0; let v=f.v; if(c.up&&(k==='B'||k==='H')) v+=k==='B'?3:10; return v; }
+function cdesc(c){
+  const d=def(c); if(T[c.id]) { let s=d.desc; if(c.up){ if(d.fx.some(f=>f.k==='B')) s=s.replace(/방어 (\d+)/,(m,n)=>'방어 '+(+n+3)); else if(d.fx.some(f=>f.k==='H')) s=s.replace(/HP (\d+)/,(m,n)=>'HP '+(+n+10)); else s='코스트 -1. '+s; } return s; }
+  const p=[]; if(d.dmg) p.push('피해 '+cdmg(c)+(d.hits>1?'×'+d.hits:'')); if(d.all) p.push('(적 전체)');
+  for(const f of d.fx){ const pc=f.p&&f.p<1?Math.round(f.p*100)+'% ':'';
+    switch(f.k){case 'S':p.push(pc+{burn:'화상',para:'마비',sleep:'잠듦',poison:'독 '+f.v,toxic:'맹독 '+f.v}[f.s]);break;
+    case 'R':p.push(pc+(f.who==='s'?'내 ':'상대 ')+{atk:'공격',def:'방어',spd:'스피드'}[f.st]+(f.v>0?' +':' ')+f.v);break;
+    case 'B':p.push('방어 '+fxv(c,'B'));break; case 'D':p.push(f.v+'장 드로우');break; case 'H':p.push('HP '+fxv(c,'H')+' 회복');break; case 'HP':p.push('최대 HP의 '+Math.round(f.v*100)+'% 회복');break;
+    case 'DR':p.push('준 피해의 절반 회복');break; case 'RC':p.push('반동 '+Math.round(f.v*100)+'%');break; case 'X':p.push('소멸');break; case 'SW':p.push('교체');break;
+    case 'CAP':p.push('포획 시도');break; case 'LS':p.push('씨뿌리기: 매 턴 상대 HP 3을 빼앗아 회복');break; case 'AQ':p.push('아쿠아링: 매 턴 HP 3 회복');break;
+    case 'W':p.push({sun:'쾌청 3턴 (불꽃 ×1.5, 물 ×0.5)',rain:'비 3턴 (물 ×1.5, 불꽃 ×0.5)',sand:'모래바람 3턴 (바위·땅·강철 외 턴마다 2 피해)'}[f.w]);break;
+    case 'NA':p.push('다음 공격 ×'+f.v);break; case 'CH':p.push('충전: 다음 턴 시작에 피해');break; case 'RE':p.push('재충전: 다음 턴 에너지 -1');break;
+    case 'V':p.push(pc+'허점 '+f.v+'턴 (받는 피해 ×1.5)');break; case 'FL':p.push(pc+'풀죽음 (다음 행동 절반)');break; case 'FIX':p.push('고정 피해 '+(f.v+(c.up?3:0)));break;
+    case 'NONE':p.push('아무 일도 일어나지 않는다');break; case 'CLR':p.push('내 상태이상 해제');break; case 'BRK':p.push('상대 방어 무시');break; case 'CNT':p.push('이번 턴 받은 피해의 2배를 되돌려 준다');break; case 'GOLD':p.push('+'+f.v+'원');break; }
+  }
+  if(d.acc<100) p.push('명중 '+d.acc+'%'); if(d.pri>0) p.push('선제');
+  return p.join(' · ');
+}
+function catName(d){ return {p:'물리',s:'특수',x:'변화',t:'트레이너'}[d.cat]; }
+function typeTag(t){ if(t==='trainer') return '<span class="type" style="background:#777">트레이너</span>'; const x=TYPES[t]; return '<span class="type" style="background:'+x[1]+'">'+x[0]+'</span>'; }
+function eff(atk,defTypes){ let m=1; for(const t of defTypes){ const c=CHART[atk]; if(!c) continue; if(c.s&&c.s.includes(t)) m*=S.chart==='orig'?2:1.5; else if(c.w&&c.w.includes(t)) m*=S.chart==='orig'?.5:.67; else if(c.i&&c.i.includes(t)) m*=S.chart==='orig'?0:.25; } return m; }
+function hpCls(f){ return f<.25?'low':f<.5?'mid':''; }
+function pic(types,ko,spid,back,size){ const k=(back?'b':'f')+DEX[spid]; const src=SPR[k]; if(src) return '<img class="spr '+(size||'')+'" src="'+src+'" alt="'+esc(ko)+'">'; return orb(types,ko); }
+function ico(k){ const src=SPR['i_'+ICON[k]]; return src?'<img class="ico" src="'+src+'" alt="">':''; }
+function orb(types,ko){ const c1=TYPES[types[0]][1], c2=TYPES[types[1]||types[0]][1]; return '<span class="orb" style="background:linear-gradient(135deg,'+c1+','+c2+')">'+esc(ko[0])+'</span>'; }
+
+/* ---------- 상태 ---------- */
+let S={screen:'title',mode:'switch',chart:'soft',run:null,ui:{},auto:false,mute:false,mp:{n:1,mode:'vote',scale:'auto'},multi:null,headless:false,resolving:false};
+function save(){ try{ if(S.headless) return; if(S.multi&&S.screen!=='map'&&S.screen!=='title'&&S.screen!=='deck') return;
+  const multi=S.multi?Object.assign({},S.multi,{players:S.multi.players.map(p=>Object.assign({},p,{map:null,battle:null,reward:null,event:null,shop:null}))}):null;
+  localStorage.setItem('cobblespire-proto',JSON.stringify({mode:S.mode,chart:S.chart,mp:S.mp,run:S.multi?null:S.run,multi,map:S.multi?S.multi.players[0].map:null,screen:S.screen,uid:UID})); }catch(e){} }
+function load(){ try{ const j=JSON.parse(localStorage.getItem('cobblespire-proto')); if(j&&(j.run||j.multi)){ S.mode=j.mode; S.chart=j.chart; if(j.mp) S.mp=j.mp; UID=j.uid||5000;
+  if(j.multi){ S.multi=j.multi; for(const p of S.multi.players) p.map=j.map; S.run=S.multi.players[0]; S.screen='map'; }
+  else { S.multi=null; S.run=j.run; if(S.run.id==null){ S.run.id=0; S.run.name='나'; S.run.bot=false; } const b=S.run.battle; if(b&&!b.parts){ b.parts=[0]; b.leader=0; b.pl={}; b.curPid=0; } S.screen=j.screen==='title'?'map':j.screen; }
+  return true; } }catch(e){} return false; }
+
+function newMon(spid){ const s=SP[spid]; return {uid:uid(),sp:spid,ko:s.ko,hp:s.hp+50,maxHp:s.hp+50,st:{},rk:{atk:0,def:0,spd:0},block:0,sashUsed:false}; }
+function mkCard(id,owner,up){ return {uid:uid(),id,owner:owner||null,up:!!up}; }
+function mkRun(starterIdx,o){ const st=STARTERS[starterIdx]; const mon=newMon(st.sp); const deck=st.deck.map(id=>mkCard(id,M[id]?mon.uid:null));
+  return Object.assign({id:0,name:'나',bot:false,dead:false,party:[mon],active:0,deck,money:120,balls:3,berries:[st.berry],items:[],floor:0,map:null,pos:null,badges:[],won:0,seen:[st.sp],ability:true,hist:[],battle:null,reward:null,event:null,shop:null,egg:null,uidc:0},o||{}); }
+function startRun(starterIdx){
+  const map=genMap(); const me=mkRun(starterIdx,{map}); S.run=me; S.multi=null; S.resolving=false;
+  if(S.mp.n>1){ const others=shuffle([0,1,2].filter(i=>i!==starterIdx)); const players=[me];
+    for(let i=1;i<S.mp.n;i++) players.push(mkRun(others[(i-1)%others.length],{id:i,name:BOT_NAMES[i-1],bot:true,map}));
+    S.multi={mode:S.mp.mode,scale:S.mp.scale==='auto'?S.mp.mode==='vote':S.mp.scale==='on',players,intents:{},news:[],floorNews:[],lastVote:''}; planBots(); }
+  S.screen='map'; render();
+}
+function genMap(){
+  const floors=[]; for(let f=0;f<8;f++){ const row=[]; const n=f===7?1:3;
+    for(let l=0;l<n;l++){ let t='wild';
+      if(f===7) t='boss'; else if(f===6) t='rest'; else if(f===0) t='wild';
+      else { const r=Math.random(); t=r<.45?'wild':r<.60&&f>=2?'trainer':r<.82?'event':r<.94?'rest':'shop'; }
+      row.push({f,l,t,name:PLACES[f],next:[],done:false}); }
+    floors.push(row); }
+  floors[3][R(3)].t='treasure';
+  for(let f=0;f<7;f++){ for(const n of floors[f]){ const cand=floors[f+1].filter(m=>Math.abs(m.l-n.l)<=1||floors[f+1].length===1);
+      const k=cand.length>1&&chance(.5)?2:1; n.next=shuffle(cand).slice(0,k).map(m=>m.l); }
+    for(const m of floors[f+1]){ if(!floors[f].some(n=>n.next.includes(m.l))){ const near=floors[f].reduce((a,b)=>Math.abs(b.l-m.l)<Math.abs(a.l-m.l)?b:a); near.next.push(m.l);} } }
+  return floors;
+}
+function reachableOf(r){ if(!r.pos) return r.map[0]; const cur=r.map[r.pos.f][r.pos.l]; if(r.pos.f>=7) return []; return r.map[r.pos.f+1].filter(n=>cur.next.includes(n.l)); }
+function reachable(){ return reachableOf(S.run); }
+
+/* ---------- 전투 엔진 ---------- */
+function enemyMon(spid,scale,dscale){ const s=SP[spid]; const base=Math.round(s.hp*0.8*scale)+10; return {uid:uid(),sp:spid,ko:s.ko,types:s.types,hp:base,maxHp:base,st:{},rk:{atk:0,def:0,spd:0},block:0,dscale:dscale||1,intent:null,last:null,atkCnt:0}; }
+function startBattle(kind,opts){
+  opts=opts||{}; const parts=(opts.parts||[S.run]).filter(p=>!p.dead); const n=parts.length; const lead=opts.lead||parts.find(p=>!p.bot)||parts[0]; S.run=lead;
+  const r=lead; const fl=r.floor; const modeB=S.mode==='field'; const multiF=modeB||n>=2;
+  const bal=BAL[S.mode][kind]; const coop=n>=2&&(kind==='boss'||(S.multi&&S.multi.scale));
+  const CO=COOP[S.mode][kind==='wild'?'wild':kind==='boss'?'boss':'tr']; const scale=bal[0]*(coop?1+CO[0]*(n-1):1), ds=bal[1]*(coop?1+CO[1]*(n-1):1);
+  let enemies=[], queue=[], title='', line='';
+  if(kind==='wild'){ const table=opts.table||(fl<=2?WILD_EARLY:fl<=4?WILD_EARLY.concat(WILD_MID):WILD_MID.concat(WILD_LATE)); const big=modeB&&r.party.length>=2; const a=pick(table); enemies=[enemyMon(a,scale*(big?1.15:1),ds)];
+    const pairP=modeB?(r.party.length>=3?.6:r.party.length===2?.4:.1):(fl>=4?.3:0); const cnt=n>=2?Math.min(3,n):(chance(pairP)?2:1); while(enemies.length<cnt) enemies.push(enemyMon(pick(table),scale*(big?1.15:1),ds)); title='야생 '+enemies.map(e=>e.ko).join('와 ')+'이(가) 튀어나왔다!'; }
+  else if(kind==='trainer'||kind==='elite'){ const t=opts.trainer||pick(TRAINERS); title=t.name+'이(가) 승부를 걸어왔다!'; line=t.line; const ms=t.mons.map(m=>enemyMon(m,scale,ds)); if(multiF) enemies=ms; else { enemies=[ms[0]]; queue=ms.slice(1);} }
+  else { title=BOSS.name; line=BOSS.line; const ms=BOSS.mons.map(m=>enemyMon(m,scale,ds)); if(multiF) enemies=ms; else { enemies=[ms[0]]; queue=ms.slice(1);} }
+  for(const p of parts){ for(const m of p.party){ m.block=0; m.rk={atk:0,def:0,spd:0}; m.st={}; m.sashUsed=false; } if(!modeB){ if(p.party[p.active].hp<=0) p.active=Math.max(0,p.party.findIndex(m=>m.hp>0)); } }
+  const b={kind,title,line,enemies,queue,turn:0,weather:kind==='boss'?{w:'sand',turns:99}:null,log:[],over:false,captured:null,capturedBy:null,parts:parts.map(p=>p.id),pl:{},curPid:null,leader:lead.id,n,fx:[],busy:false,botAct:false,
+    hand:[],draw:[],discard:[],exhaust:[],energy:3,pending:[],nextAtk:1,paraNext:0,rechargeNext:0,freeSwitch:true,dmgTaken:0,sel:null};
+  for(const p of parts){ const deckCards=p.deck.filter(c=>!(T[c.id]&&T[c.id].modeA&&modeB)); b.pl[p.id]={hand:[],draw:shuffle(deckCards.map(c=>({...c}))),discard:[],exhaust:[],energy:3,pending:[],nextAtk:1,paraNext:0,rechargeNext:0,freeSwitch:true,dmgTaken:0,sel:null}; p.battle=b; }
+  swapIn(b,lead.id); log(title); if(line) log('"'+line+'"'); if(kind==='boss') log('모래바람이 몰아친다! (관장의 기믹)');
+  if(n>=2) log(parts.map(p=>p.name).join(', ')+'이(가) 함께 싸운다!'+(S.multi&&S.multi.mode==='split'&&kind!=='boss'?' (보상은 '+n+'명이 나눈다)':''));
+  for(const e of enemies) setIntent(e);
+  for(const p of parts){ swapIn(b,p.id); startTurn(); } swapIn(b,lead.id);
+  S.screen='battle'; render();
+}
+function log(s){ const b=S.run.battle; b.log.push(s); if(b.log.length>60) b.log.shift(); }
+function fx(o){ const b=S.run&&S.run.battle; if(b){ (b.fx||(b.fx=[])).push(o); } }
+function fieldMonsOf(r){ return S.mode==='field'?r.party.filter(m=>m.hp>0):(r.party[r.active]&&r.party[r.active].hp>0?[r.party[r.active]]:[]); }
+function fieldMons(){ return fieldMonsOf(S.run); }
+function H(){ return S.multi?S.multi.players[0]:S.run; }
+function playerById(id){ return S.multi?(S.multi.players.find(p=>p.id===id)||S.run):S.run; }
+function partRuns(b){ return (b&&b.parts?b.parts:[S.run.id]).map(playerById); }
+function allField(b){ const out=[]; for(const r of partRuns(b)) out.push(...fieldMonsOf(r)); return out; }
+function runOf(m){ const b=S.run&&S.run.battle; if(b&&b.parts&&b.parts.length>1){ for(const r of partRuns(b)) if(r.party.some(x=>x.uid===m.uid)) return r; } return S.run; }
+function monByUid(uid){ const b=S.run.battle; for(const r of partRuns(b)){ const m=r.party.find(x=>x.uid===uid); if(m) return m; } return null; }
+function ownerName(m){ const r=runOf(m); return r?r.name:''; }
+const PFIELDS=['hand','draw','discard','exhaust','energy','pending','nextAtk','paraNext','rechargeNext','freeSwitch','dmgTaken','sel'];
+function swapIn(b,pid){ if(b.curPid===pid){ S.run=playerById(pid); return; } if(b.curPid!=null){ const o={}; for(const k of PFIELDS) o[k]=b[k]; b.pl[b.curPid]=o; } const src=b.pl[pid]; if(src) for(const k of PFIELDS) b[k]=src[k]; b.curPid=pid; S.run=playerById(pid); }
+function plOf(b,pid){ return b.curPid===pid?b:(b.pl[pid]||b); }
+function allMons(){ return S.run.party; }
+function drawCards(n){ const b=S.run.battle; for(let i=0;i<n;i++){ if(!b.draw.length){ if(!b.discard.length) break; b.draw=shuffle(b.discard); b.discard=[]; } if(b.hand.length>=10) break; b.hand.push(b.draw.pop()); } }
+function startTurn(){
+  const b=S.run.battle, r=S.run; if(S.run.id===b.leader) b.turn++; b.energy=3-(b.paraNext?1:0)-(b.rechargeNext?1:0); b.paraNext=0; b.rechargeNext=0; b.freeSwitch=true; b.nextAtk=1;
+  const fm=fieldMons(); let drawN=5; const lead=fm[0];
+  for(const m of fm){ m.block=0; }
+  if(lead){ drawN+=clamp(lead.rk.spd,-2,2); if(lead.st.sleep) drawN-=2; if(b.turn===1&&r.items.includes('quickclaw')) drawN+=2; if(lead.st.para){ } }
+  // 지속 효과
+  for(const m of fm){ if(m.st.poison){ dmgMon(m,m.st.poison,'독'); m.st.poison--; if(m.st.poison<=0) delete m.st.poison; } if(m.st.burn){ dmgMon(m,2,'화상'); m.st.burn--; if(m.st.burn<=0) delete m.st.burn; }
+    if(m.st.aq){ heal(m,3); } if(r.items.includes('leftovers')) heal(m,2); if(m.st.sleep){ m.st.sleep--; if(m.st.sleep<=0){ delete m.st.sleep; log(m.ko+'이(가) 눈을 떴다!'); } } if(m.st.vuln){ m.st.vuln--; if(m.st.vuln<=0) delete m.st.vuln; } if(m.st.para){ m.st.para--; if(m.st.para<=0) delete m.st.para; } }
+  if(b.weather&&b.weather.w==='sand'){ for(const m of fm){ if(!SP[m.sp].types.some(t=>['rock','ground','steel'].includes(t))) dmgMon(m,2,'모래바람'); } }
+  // 씨뿌리기(적에게 걸린 것)
+  if(S.run.id===b.leader) for(const e of b.enemies){ if(e.st.leech&&e.hp>0){ e.hp=Math.max(0,e.hp-3); const o=monByUid(e.st.leech); if(o&&o.hp>0) heal(o,3); log(e.ko+'의 체력을 씨앗이 빨아들였다 (3)'); } }
+  // 충전 해소
+  for(const p of b.pending){ const tgt=b.enemies.find(e=>e.uid===p.target&&e.hp>0)||b.enemies.find(e=>e.hp>0); const owner=r.party.find(m=>m.uid===p.owner); if(tgt) hitEnemy(p.card,tgt,owner,true); }
+  b.pending=[]; drawCards(Math.max(1,drawN)); checkEnd();
+}
+function heal(m,v){ const before=m.hp; m.hp=Math.min(m.maxHp,m.hp+v); if(m.hp-before>0) fx({k:'heal',uid:m.uid,v:m.hp-before}); return m.hp-before; }
+function dmgMon(m,v,src){ const r=runOf(m); if(v<=0||m.hp<=0) return 0; let left=v; if(m.block>0){ const a=Math.min(m.block,left); m.block-=a; left-=a; }
+  if(left>0){ if(r.items.includes('focussash')&&!m.sashUsed&&left>=m.hp&&m.hp>1){ left=m.hp-1; m.sashUsed=true; log('기합의띠로 '+m.ko+'이(가) 버텼다!'); } m.hp=Math.max(0,m.hp-left); S.run.battle.dmgTaken+=left; }
+  log(m.ko+'이(가) '+(src?src+'로 ':'')+left+' 피해'+(v-left>0?' (방어 '+(v-left)+')':'')); fx({k:'dmg',uid:m.uid,v:left,blocked:v-left}); if(m.hp<=0){ log(m.ko+'은(는) 쓰러졌다!'); m.st={}; fx({k:'faint',uid:m.uid}); } return left; }
+function atkMod(stat){ return clamp(1+(stat-50)/100,.7,1.3); }
+function defMod(stat){ return clamp(1-(stat-50)/200,.8,1.2); }
+function calcCardDmg(c,e,owner){
+  const d=def(c); const r=S.run, b=r.battle; if(!d.dmg&&!d.fx.some(f=>f.k==='FIX')) return 0;
+  const fix=d.fx.find(f=>f.k==='FIX'); if(fix) return fix.v+(c.up?3:0);
+  const os=owner?SP[owner.sp]:null; let v=cdmg(c);
+  if(os){ v*=atkMod(d.cat==='p'?os.atk:os.spa); v*=1+0.25*clamp(owner.rk.atk,-3,3); if(owner.st.burn&&d.cat==='p') v*=.75;
+    const stab=os.types.includes(d.type); if(stab) v*=1.25;
+    if(r.ability&&os.abil&&owner.hp<=owner.maxHp/3){ const t={blaze:'fire',torrent:'water',overgrow:'grass'}[os.abil]; if(t===d.type) v*=1.5; } }
+  v*=eff(d.type,e.types); const es=SP[e.sp]; v*=defMod(es.def); v*=1-0.2*clamp(e.rk.def,-3,3); if(e.st.vuln) v*=1.5;
+  if(b.weather){ if(b.weather.w==='sun'){ if(d.type==='fire') v*=1.5; if(d.type==='water') v*=.5; } if(b.weather.w==='rain'){ if(d.type==='water') v*=1.5; if(d.type==='fire') v*=.5; } if(b.weather.w==='sand'&&d.cat==='s'&&e.types.includes('rock')) v*=.75; }
+  v*=b.nextAtk; if(r.items.includes('lifeorb')) v*=1.3;
+  return Math.max(1,Math.round(v));
+}
+function hitEnemy(c,e,owner,fromCharge){
+  const d=def(c), b=S.run.battle, r=S.run; if(e.hp<=0) return;
+  if(d.acc<100&&!chance(d.acc/100)){ log(cname(c)+' 은(는) 빗나갔다!'); return; }
+  let total=0; const per=calcCardDmg(c,e,owner);
+  for(let h=0;h<d.hits;h++){ let v=per; let left=v; if(e.block>0&&!d.fx.some(f=>f.k==='BRK')){ const a=Math.min(e.block,left); e.block-=a; left-=a; } e.hp=Math.max(0,e.hp-left); total+=left; }
+  const m=eff(d.type,e.types); log(cname(c)+' → '+e.ko+'에게 '+total+' 피해'+(m>1.01?' (효과가 굉장했다!)':m<.99?' (효과가 별로다)':'')); fx({k:'atk',uid:e.uid,type:d.type,v:total,eff:m});
+  if(total>0){ if(owner&&d.fx.some(f=>f.k==='DR')) heal(owner,Math.round(total*0.5)); if(owner&&r.items.includes('shellbell')) heal(owner,2);
+    if(owner&&SP[e.sp].abil==='static'&&d.cat==='p'&&chance(.3)){ owner.st.para=2; log('정전기! '+owner.ko+'이(가) 마비되었다'); } }
+  for(const f of d.fx){ if(f.k==='RC'&&owner&&total>0) dmgMon(owner,Math.round(total*f.v),'반동'); if(f.k==='GOLD'){ r.money+=f.v; } }
+  applyFx(c,e,owner);
+  if(e.hp<=0){ log(e.ko+'은(는) 쓰러졌다!'); fx({k:'faint',uid:e.uid}); }
+}
+function applyFx(c,e,owner){
+  const d=def(c), b=S.run.battle, r=S.run;
+  for(const f of d.fx){ if(f.p!==undefined&&!chance(f.p)) continue;
+    switch(f.k){
+      case 'S': if(e&&e.hp>0){ if(f.s==='poison'||f.s==='toxic'){ e.st.poison=(e.st.poison||0)+f.v; if(f.s==='toxic') e.st.toxic=1; } else if(f.s==='burn') e.st.burn=3; else if(f.s==='para') e.st.para=3; else if(f.s==='sleep') e.st.sleep=1; log(e.ko+'은(는) '+{poison:'독',toxic:'맹독',burn:'화상',para:'마비',sleep:'잠듦'}[f.s]+' 상태가 되었다'); fx({k:'txt',uid:e.uid,t:{poison:'독',toxic:'맹독',burn:'화상',para:'마비',sleep:'잠듦'}[f.s]}); } break;
+      case 'R': { const t=f.who==='s'?owner:e; if(t&&t.hp>0){ t.rk[f.st]=clamp(t.rk[f.st]+f.v,-3,3); log(t.ko+'의 '+{atk:'공격',def:'방어',spd:'스피드'}[f.st]+'이(가) '+(f.v>0?'올랐다':'떨어졌다')); fx({k:'txt',uid:t.uid,t:{atk:'공격',def:'방어',spd:'스피드'}[f.st]+(f.v>0?' ↑':' ↓')}); } } break;
+      case 'B': if(owner){ owner.block+=fxv(c,'B'); fx({k:'txt',uid:owner.uid,t:'방어 +'+fxv(c,'B')}); } break;
+      case 'D': drawCards(f.v); break;
+      case 'H': if(owner) heal(owner,fxv(c,'H')); break;
+      case 'HP': if(owner) heal(owner,Math.round(owner.maxHp*f.v)); break;
+      case 'LS': if(e&&e.hp>0&&owner){ e.st.leech=owner.uid; log(e.ko+'에게 씨앗을 심었다'); } break;
+      case 'AQ': if(owner){ owner.st.aq=1; } break;
+      case 'W': b.weather={w:f.w,turns:3}; log({sun:'햇살이 강해졌다',rain:'비가 내리기 시작했다',sand:'모래바람이 불기 시작했다'}[f.w]); break;
+      case 'NA': b.nextAtk=f.v; break;
+      case 'RE': b.rechargeNext=1; break;
+      case 'V': if(e&&e.hp>0){ e.st.vuln=(e.st.vuln||0)+f.v; } break;
+      case 'FL': if(e&&e.hp>0){ e.st.flinch=1; log(e.ko+'은(는) 풀이 죽었다'); } break;
+      case 'CLR': if(owner){ for(const k of ['poison','burn','para','sleep','vuln']) delete owner.st[k]; } break;
+      case 'CNT': if(owner&&e){ const v=b.dmgTaken*2; if(v>0){ e.hp=Math.max(0,e.hp-v); log('카운터! '+e.ko+'에게 '+v+' 피해'); } } break;
+    }
+  }
+}
+function canPlay(c){ const b=S.run.battle, r=S.run; const d=def(c); if(b.busy&&!b.botAct) return '상대 턴'; if(!fieldMons().length) return '싸울 포켓몬이 없다'; if(ccost(c)>b.energy) return '에너지 부족';
+  if(c.owner){ const o=r.party.find(m=>m.uid===c.owner); if(S.mode==='field'){ if(!o||o.hp<=0) return '쓰러진 포켓몬의 기술'; } }
+  if(d.fx.some(f=>f.k==='SW')&&!r.party.some((m,i)=>i!==r.active&&m.hp>0)) return '교체할 포켓몬 없음';
+  if(d.fx.some(f=>f.k==='CAP')&&(b.kind!=='wild'||r.balls<=0||r.party.length>=3)) return b.kind!=='wild'?'야생 전투에서만':r.balls<=0?'몬스터볼 없음':'파티가 가득 참';
+  const lead=fieldMons()[0]; if(lead&&lead.st.sleep&&c.owner===lead.uid&&S.mode==='switch') return lead.ko+'은(는) 잠들어 있다';
+  return null; }
+function cardOwner(c){ const r=S.run; if(S.mode==='switch') return r.party[r.active]; if(c.owner){ const o=r.party.find(m=>m.uid===c.owner); if(o&&o.hp>0) return o; } return null; }
+function needsTarget(c){ const d=def(c), b=S.run.battle; const alive=b.enemies.filter(e=>e.hp>0);
+  const selfOnly=!d.dmg&&!d.fx.some(f=>['S','V','FL','LS','FIX','CAP','CNT'].includes(f.k)||(f.k==='R'&&f.who==='e'));
+  if(selfOnly){ if(S.mode==='field'&&!c.owner&&d.fx.some(f=>['B','H','HP','AQ','CLR'].includes(f.k))&&fieldMons().length>1) return 'ally'; return null; }
+  if(d.all) return null; return alive.length>1?'enemy':null; }
+function playCard(idx,target){
+  const b=S.run.battle, r=S.run; const c=b.hand[idx]; if(!c||(b.busy&&!b.botAct)) return; const why=canPlay(c); if(why){ toast(why); return; } SFX.play('card');
+  const d=def(c); let owner=cardOwner(c); if(target&&target.kind==='ally') owner=target.m;
+  const alive=b.enemies.filter(e=>e.hp>0); let tg=target&&target.kind==='enemy'?target.e:alive[0];
+  b.energy-=ccost(c); b.hand.splice(idx,1); b.sel=null;
+  const isAtk=d.dmg>0||d.fx.some(f=>f.k==='FIX');
+  if(isAtk&&r.items.includes('lifeorb')&&owner) { owner.hp=Math.max(1,owner.hp-1); }
+  if(d.fx.some(f=>f.k==='CH')){ r.balls; b.pending.push({card:c,target:tg&&tg.uid,owner:owner&&owner.uid}); log(cname(c)+' 충전 중... 다음 턴에 발동'); applyFx(c,null,owner); }
+  else if(isAtk){ const targets=d.all?alive:[tg]; for(const e of targets) hitEnemy(c,e,owner); if(b.nextAtk!==1) b.nextAtk=1; }
+  else if(d.fx.some(f=>f.k==='CAP')){ r.balls--; const e=tg; const p=capP(e); if(chance(p)){ log('야호! '+e.ko+'을(를) 잡았다!'); b.captured=e; b.capturedBy=r.id; e.hp=0; e.capturedFlag=true; SFX.play('capok'); fx({k:'txt',uid:e.uid,t:'잡았다!'}); } else { log('아깝다! '+e.ko+'이(가) 볼에서 빠져나왔다 ('+Math.round(p*100)+'%)'); SFX.play('capfail'); fx({k:'txt',uid:e.uid,t:'빠져나왔다'}); } }
+  else { log(cname(c)+' 사용'); applyFx(c,tg,owner); }
+  if(d.fx.some(f=>f.k==='SW')&&!b.over){ b.sel={kind:'switch',card:c}; }
+  if(d.fx.some(f=>f.k==='X')) b.exhaust.push(c); else b.discard.push(c);
+  checkEnd(); render();
+}
+function capP(e){ return clamp(0.15+0.75*(SP[e.sp].catchR/255)*(1-e.hp/e.maxHp),0.05,0.95); }
+function doSwitch(i){ const r=S.run, b=r.battle; if(i===r.active||r.party[i].hp<=0) return; const was=r.party[r.active]; r.active=i; log(was.ko+' 돌아와! 가라, '+r.party[i].ko+'!'); const n=r.party[i]; n.block=0; for(const k of ['poison','burn','para','sleep','vuln']) if(SP[n.sp].abil==='naturalcure') delete n.st[k]; }
+function setIntent(e){ const s=SP[e.sp]; const moves=s.moves.filter(id=>M[id]); let cand=moves; if(e.atkCnt>=2){ const st=moves.filter(id=>M[id].cat==='x'); if(st.length) cand=st; } if(e.last&&cand.length>1) cand=cand.filter(id=>id!==e.last); const id=pick(cand); e.intent=id; const fm=allField(S.run.battle); e.target=fm.length?(chance(.5)?fm.reduce((a,b)=>a.hp<b.hp?a:b):pick(fm)).uid:null; }
+function enemyDmg(e,id,m){ const d=M[id]; if(!d.dmg&&!d.fx.some(f=>f.k==='FIX')) return 0; const fix=d.fx.find(f=>f.k==='FIX'); if(fix) return fix.v; const s=SP[e.sp], b=S.run.battle; let v=d.dmg*e.dscale*atkMod(d.cat==='p'?s.atk:s.spa)*(1+0.25*clamp(e.rk.atk,-3,3)); if(s.types.includes(d.type)) v*=1.25; if(e.st.burn&&d.cat==='p') v*=.75; if(e.st.para) v*=.75; if(e.st.flinch) v*=.5;
+  if(m){ const ms=SP[m.sp]; v*=eff(d.type,ms.types)*defMod(ms.def)*(1-0.2*clamp(m.rk.def,-3,3)); if(m.st.vuln) v*=1.5; }
+  if(b.weather){ if(b.weather.w==='sun'){ if(d.type==='fire') v*=1.5; if(d.type==='water') v*=.5; } if(b.weather.w==='rain'){ if(d.type==='water') v*=1.5; if(d.type==='fire') v*=.5; } }
+  return Math.max(1,Math.round(v)); }
+function enemyAct(e){
+  const r=S.run, b=r.battle; if(e.hp<=0) return; const id=e.intent; const d=M[id];
+  if(e.st.poison){ e.hp=Math.max(0,e.hp-e.st.poison); log(e.ko+'은(는) 독 피해 '+e.st.poison); if(e.st.toxic) e.st.poison++; else e.st.poison--; if(e.st.poison<=0){ delete e.st.poison; delete e.st.toxic; } if(e.hp<=0){ log(e.ko+'은(는) 쓰러졌다!'); return; } }
+  if(e.st.burn){ e.hp=Math.max(0,e.hp-2); log(e.ko+'은(는) 화상 피해 2'); e.st.burn--; if(e.st.burn<=0) delete e.st.burn; if(e.hp<=0){ log(e.ko+'은(는) 쓰러졌다!'); return; } }
+  if(e.st.sleep){ delete e.st.sleep; log(e.ko+'은(는) 쿨쿨 잠들어 있다'); return; }
+  if(e.st.para&&chance(.25)){ log(e.ko+'은(는) 몸이 저려서 움직일 수 없다!'); e.st.para--; if(e.st.para<=0) delete e.st.para; return; }
+  if(e.st.para){ e.st.para--; if(e.st.para<=0) delete e.st.para; }
+  let fm=allField(b); if(!fm.length) return; let m=fm.find(x=>x.uid===e.target)||pick(fm);
+  const nm=KO[id]?KO[id].n:id; const isAtk=d.dmg>0||d.fx.some(f=>f.k==='FIX');
+  if(d.acc<100&&!chance(d.acc/100)){ log(e.ko+'의 '+nm+'은(는) 빗나갔다!'); }
+  else if(isAtk){ const targets=d.all?fm:[m]; for(const t of targets){ const v=enemyDmg(e,id,t); fx({k:'atk',uid:t.uid,type:d.type,v:v*d.hits,eff:eff(d.type,SP[t.sp].types),enemy:true}); for(let h=0;h<d.hits;h++) dmgMon(t,v,e.ko+'의 '+nm); if(d.fx.some(f=>f.k==='RC')) e.hp=Math.max(0,e.hp-Math.round(v*.25)); if(d.fx.some(f=>f.k==='DR')) e.hp=Math.min(e.maxHp,e.hp+Math.round(v*.5)); enemyFx(e,d,t); if(t.hp<=0) break; } e.atkCnt++; }
+  else { log(e.ko+'의 '+nm+'!'); enemyFx(e,d,m); e.atkCnt=0; }
+  delete e.st.flinch; e.last=id;
+}
+function enemyFx(e,d,m){ const b=S.run.battle; for(const f of d.fx){ if(f.p!==undefined&&!chance(f.p)) continue;
+  switch(f.k){ case 'S': if(m.hp>0){ if(f.s==='poison'||f.s==='toxic') m.st.poison=(m.st.poison||0)+f.v; else if(f.s==='burn') m.st.burn=3; else if(f.s==='para'){ m.st.para=2; plOf(b,runOf(m).id).paraNext=1; } else if(f.s==='sleep') m.st.sleep=2; log(m.ko+'은(는) '+{poison:'독',toxic:'맹독',burn:'화상',para:'마비',sleep:'잠듦'}[f.s]+' 상태가 되었다'); fx({k:'txt',uid:m.uid,t:{poison:'독',toxic:'맹독',burn:'화상',para:'마비',sleep:'잠듦'}[f.s]}); } break;
+    case 'R': { const t=f.who==='s'?e:m; t.rk[f.st]=clamp(t.rk[f.st]+f.v,-3,3); log(t.ko+'의 '+{atk:'공격',def:'방어',spd:'스피드'}[f.st]+'이(가) '+(f.v>0?'올랐다':'떨어졌다')); fx({k:'txt',uid:t.uid,t:{atk:'공격',def:'방어',spd:'스피드'}[f.st]+(f.v>0?' ↑':' ↓')}); } break;
+    case 'B': e.block+=f.v; fx({k:'txt',uid:e.uid,t:'방어 +'+f.v}); break; case 'V': if(m.hp>0) m.st.vuln=(m.st.vuln||0)+f.v; break; case 'FL': break;
+    case 'W': b.weather={w:f.w,turns:3}; break; case 'H': e.hp=Math.min(e.maxHp,e.hp+f.v); break; case 'HP': e.hp=Math.min(e.maxHp,e.hp+Math.round(e.maxHp*f.v)); break;
+    case 'LS': if(m.hp>0){ m.st.leechBy=e.uid; } break; } } }
+const sleep=(ms)=>S.headless?Promise.resolve():new Promise(res=>setTimeout(res,ms));
+function discardHand(b){ b.hand=b.hand.filter(c=>{ if(def(c).fx.some(f=>f.k==='RET')) return true; b.discard.push(c); return false; }); b.dmgTaken=0; }
+async function endTurn(){
+  const b=S.run.battle; if(b.over||b.busy) return; const leadId=b.curPid; b.sel=null; b.busy=true;
+  discardHand(b); SFX.play('end'); render(); await sleep(S.auto?300:450);
+  // 동료(봇) 턴: 리더가 아닌 참가자
+  for(const pid of b.parts){ if(pid===leadId) continue; const p=playerById(pid); if(!p.bot||p.dead) continue; swapIn(b,pid);
+    if(fieldMons().length){ log('— '+p.name+'의 턴 —'); await botTurn(b); if(b.over){ b.busy=false; render(); return; } } discardHand(b); }
+  swapIn(b,leadId);
+  for(const e of b.enemies){ e.block=0; enemyAct(e); render(); if(checkEnd()) { b.busy=false; render(); return; } await sleep(S.auto?450:700); }
+  b.busy=false;
+  for(const e of b.enemies){ if(e.hp>0) setIntent(e); }
+  if(b.weather&&b.weather.turns<90){ b.weather.turns--; if(b.weather.turns<=0){ b.weather=null; log('날씨가 원래대로 돌아왔다'); } }
+  for(const pid of b.parts){ swapIn(b,pid); const r=S.run;
+    if(S.mode==='switch'&&r.party[r.active].hp<=0){ const i=r.party.findIndex(m=>m.hp>0); if(i>=0){ r.active=i; log('가라, '+r.party[i].ko+'!'); } }
+    startTurn(); if(b.over){ b.busy=false; render(); return; } }
+  swapIn(b,leadId); render();
+}
+function checkEnd(){
+  const b=S.run.battle; if(b.over) return true;
+  if(!partRuns(b).some(r=>r.party.some(m=>m.hp>0))){ b.over='lose'; log('눈앞이 캄캄해졌다...'); S.run=playerById(b.leader); S.screen='gameover'; SFX.play('lose'); return true; }
+  if(b.enemies.every(e=>e.hp<=0)){ if(b.queue.length&&!b.captured){ const n=b.queue.shift(); b.enemies=[n]; setIntent(n); log('상대가 '+n.ko+'을(를) 내보냈다!'); return false; } b.over='win'; SFX.play('win'); finishBattle(); return true; }
+  return false;
+}
+function finishBattle(){
+  const b=S.run.battle; const parts=partRuns(b); const n=parts.length; const together=n>=2; const split=together&&S.multi&&S.multi.mode==='split'&&b.kind!=='boss'; const share=split?n:1;
+  const capCands=parts.filter(p=>p.balls>0&&p.party.length<3); const capTo=together?(capCands.length?pick(capCands):null):parts[0];
+  const itemTo=together?pick(parts):parts[0]; const berryTo=together?pick(parts):parts[0];
+  const capturedBy=b.captured?playerById(b.capturedBy!=null?b.capturedBy:b.leader):null;
+  for(const r of parts){ S.run=r; r.won++;
+    for(const m of r.party){ m.block=0; m.rk={atk:0,def:0,spd:0}; m.st={}; if(m.hp<=0) m.hp=Math.max(1,Math.round(m.maxHp*0.2)); }
+    const extra=r.items.includes('expshare')?10:0;
+    const rw={kind:b.kind,money:0,cards:[],berry:null,item:null,capture:null,badge:null,evo:false,captured:(capturedBy===r&&b.captured)?b.captured.sp:null,took:{},share,mates:together?parts.filter(p=>p!==r).map(p=>p.name):[]};
+    if(b.kind==='wild'){ rw.money=Math.round((15+R(11))/share)+extra; if(berryTo===r&&chance(.25)) rw.berry=pick(Object.keys(BERRIES)); if(!b.captured&&capTo===r){ const last=b.enemies[b.enemies.length-1]; rw.capture={sp:last.sp,p:clamp(0.15+0.75*(SP[last.sp].catchR/255),0.05,0.95)}; } }
+    else if(b.kind==='trainer'){ rw.money=Math.round((30+R(16))/share)+extra; if(itemTo===r) rw.item=pick(Object.keys(ITEMS).filter(i=>!r.items.includes(i))); }
+    else if(b.kind==='elite'){ rw.money=Math.round((45+R(16))/share)+extra; if(itemTo===r) rw.item=pick(Object.keys(ITEMS).filter(i=>!r.items.includes(i))); }
+    else { rw.money=80+extra; rw.badge=BOSS.badge; rw.items3=shuffle(Object.keys(ITEMS).filter(i=>!r.items.includes(i))).slice(0,3); rw.evo=true; }
+    if(capturedBy===r){ if(r.party.length<3) r.party.push(joinMon(b.captured.sp)); else { r.deck.push(mkCard(pick(SP[b.captured.sp].moves.filter(id=>M[id])),null)); rw.captured=null; rw.capMsg=SP[b.captured.sp].ko+'을(를) 잡았지만 파티가 가득 차 기술 카드 1장만 받았다.'; } }
+    else rw.cards=rewardCards(split?2:3);
+    if(r.egg&&b.kind!=='boss'){ r.egg.left--; if(r.egg.left<=0){ const sp=pick(WILD_EARLY.concat(['pikachu'])); r.egg=null; if(r.party.length<3){ r.party.push(joinMon(sp)); rw.hatch=sp+' 부화! '+SP[sp].ko+'이(가) 파티에 들어왔다.'; } else { r.deck.push(mkCard(pick(SP[sp].moves.filter(id=>M[id])),null)); rw.hatch='알에서 '+SP[sp].ko+'이(가) 태어났지만 파티가 가득 차 기술 카드만 받았다.'; } } }
+    if(r.bot) botTakeReward(r,rw); else r.reward=rw;
+  }
+  const lead=playerById(b.leader); S.run=lead; S.screen=lead.bot?'map':'reward';
+}
+function joinMon(spid){ const r=S.run; const m=newMon(spid); r.seen.push(spid); const ms=SP[spid].moves.filter(id=>M[id]).slice(0,3); for(const id of ms) r.deck.push(mkCard(id,m.uid)); return m; }
+function rewardCards(n){ const r=S.run; const out=[]; const owners=r.party.filter(m=>m.hp>0||true);
+  for(let i=0;i<n;i++){ if(chance(.25)){ const pool=TRAINER_POOL.filter(id=>!(T[id].modeA&&S.mode==='field')); out.push(mkCard(pick(pool),null)); continue; }
+    const o=pick(owners); const pool=SP[o.sp].pool.filter(id=>M[id]); const rare=chance(.3); const sub=pool.filter(id=>!!M[id].rare===rare); out.push(mkCard(pick(sub.length?sub:pool),o.uid)); }
+  return out; }
+
+/* ---------- 노드 처리 ---------- */
+function visit(r,n){ r.pos={f:n.f,l:n.l}; r.floor=n.f+1; n.done=true; r.hist.push(n.t); }
+function enterNode(n){ visit(S.run,n); openNode(n); }
+function openNode(n){ const r=S.run;
+  if(n.t==='wild') startBattle('wild'); else if(n.t==='trainer') startBattle('trainer'); else if(n.t==='boss') startBattle('boss');
+  else if(n.t==='event'){ r.event=genEvent(); S.screen='event'; render(); } else if(n.t==='rest'){ S.screen='rest'; render(); }
+  else if(n.t==='shop'){ r.shop=genShop(); S.screen='shop'; render(); } else if(n.t==='treasure'){ r.reward={kind:'treasure',cards:[],items3:shuffle(Object.keys(ITEMS).filter(i=>!r.items.includes(i))).slice(0,3),took:{}}; S.screen='reward'; render(); } }
+function genEvent(){ const r=S.run; const list=Object.keys(EVENTS).filter(k=>!EVENTS[k].where||EVENTS[k].where.includes(r.floor)); const used=r.hist.filter(h=>h.startsWith('ev:')).map(h=>h.slice(3)); const c=list.filter(e=>!used.includes(e)); const id=pick(c.length?c:list); r.hist.push('ev:'+id); return {id,done:false,text:''}; }
+function genShop(){ const r=S.run; const cards=rewardCards(4); const items=shuffle(Object.keys(ITEMS).filter(i=>!r.items.includes(i))).slice(0,2); const berries=shuffle(Object.keys(BERRIES)).slice(0,2); return {cards,items,berries,removeCost:75+25*(r.hist.filter(h=>h==='rm').length),sold:{}}; }
+function canEvolve(m){ const s=SP[m.sp]; return s.evo&&S.run.floor>=s.evo.floor; }
+function evolve(m){ const s=SP[m.sp]; const to=SP[s.evo.to]; const diff=(to.hp+50)-m.maxHp; m.sp=to.id; m.ko=to.ko; m.maxHp+=diff; m.hp=Math.min(m.maxHp,m.hp+diff); const newId=pick(to.moves.filter(id=>M[id])); S.run.deck.push(mkCard(newId,m.uid)); S.run.seen.push(to.id); return newId; }
+
+/* ---------- 렌더 ---------- */
+const app=document.getElementById('app');
+function toast(s){ const el=document.getElementById('toast'); if(el){ el.textContent=s; el.hidden=false; setTimeout(()=>{el.hidden=true;},1600); } }
+function render(){ if(S.headless) return; save(); const keepRun=S.run; if(S.multi&&S.run!==H()&&S.screen!=='title') S.run=H(); let h=''; if(S.run&&S.screen!=='title') h+=topBar(); h+={title:scrTitle,starter:scrStarter,map:scrMap,battle:scrBattle,reward:scrReward,event:scrEvent,rest:scrRest,shop:scrShop,gameover:scrOver,win:scrWin,deck:scrDeck}[S.screen](); h+='<div id="toast" class="pill" hidden style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:5;font-size:13px;padding:6px 14px;background:var(--accent);color:#fff;border:0"></div>'; app.innerHTML=h; S.run=keepRun; playFx(); scheduleAuto(); }
+function topBar(){ const r=H(); return '<div class="bar"><span class="brand">CobbleSpire</span><span class="pill mode">'+(S.mode==='switch'?'교체형 (3마리·교체)':'동시형 (3마리 동시)')+'</span>'+(S.multi?'<span class="pill mode" style="background:var(--good)">'+(S.multi.mode==='vote'?'투표형':'분산형')+' '+S.multi.players.length+'인</span>':'')+
+ '<span><span class="k">위치</span>'+(r.pos?PLACES[r.pos.f]:'관동 입구')+' <span class="muted tiny">('+r.floor+'/8)</span></span><span><span class="k">원</span>'+r.money+'</span><span><span class="k">몬스터볼</span>'+ico('ball')+r.balls+'</span><span><span class="k">열매</span>'+(r.berries.map(b=>ico(b)+BERRIES[b][0]).join(', ')||'없음')+'</span><span><span class="k">도구</span>'+(r.items.map(i=>ico(i)+ITEMS[i][0]).join(', ')||'없음')+'</span>'+
+ '<span><span class="k">배지</span>'+(r.badges.join(', ')||'없음')+'</span><button data-act="deck" class="tiny">덱 '+r.deck.length+'장</button><button data-act="help" class="tiny">규칙</button><button data-act="auto" class="tiny '+(S.auto?'primary':'')+'">자동 '+(S.auto?'ON':'OFF')+'</button><button data-act="mute" class="tiny">'+(S.mute?'소리 꺼짐':'소리 켜짐')+'</button><button data-act="quit" class="tiny">포기</button></div>'; }
+function scrTitle(){ const has=(()=>{try{const j=JSON.parse(localStorage.getItem('cobblespire-proto')||'null'); return !!(j&&(j.run||j.multi));}catch(e){return false}})();
+ return '<div class="scene"><div class="inner"><h1>CobbleSpire</h1><div class="sub">코블버스 위의 슬레이 더 스파이어식 로그라이크 덱빌딩 · 웹 체험판 v0.3</div></div></div><div class="panel center" style="padding:20px 16px"><p class="muted">코블버스 위의 슬레이 더 스파이어식 로그라이크. 스타터를 고르고, 루트 지도를 따라 1막(회색시티)까지 가 봅니다.<br>기획서 v0.1의 규칙을 그대로 옮긴 웹 프로토타입입니다. 포켓몬 그림은 임시로 5세대 스프라이트(실제 모드에서는 Cobblemon 3D 모델), 효과음은 합성음입니다. <b>자동 시연</b>을 누르면 봇이 플레이하는 모습을 볼 수 있고, 상단의 자동 버튼으로 언제든 끌 수 있습니다.</p>'+
+ '<div class="row" style="justify-content:center;margin:14px 0"><div class="panel" style="flex:1 1 280px;max-width:360px;text-align:left"><h3>파티 방식</h3><p class="tiny muted">기획서 8절 1번 결정을 둘 다 체험해 보고 고르는 용도입니다.</p><div class="choices">'+
+ '<button data-act="mode" data-arg="switch" class="'+(S.mode==='switch'?'primary':'')+'">교체형<small>앞 1마리만 싸우고 벤치 2마리와 교체. 턴마다 무료 교체 1회 + 교체·후퇴 카드. 자속은 앞 포켓몬 기준.</small></button>'+
+ '<button data-act="mode" data-arg="field" class="'+(S.mode==='field'?'primary':'')+'">동시형<small>최대 3마리가 모두 필드에. 적도 2마리씩 자주 나옴. 카드는 소유 포켓몬이 서 있어야 쓸 수 있고, 적은 HP가 낮은 쪽을 노린다.</small></button></div></div>'+
+ '<div class="panel" style="flex:1 1 280px;max-width:360px;text-align:left"><h3>타입 상성 배율</h3><p class="tiny muted">기획서 8절 4번 결정.</p><div class="seg"><button data-act="chart" data-arg="soft" class="'+(S.chart==='soft'?'on':'')+'">완화 ×1.5 / ×0.67 / ×0.25</button><button data-act="chart" data-arg="orig" class="'+(S.chart==='orig'?'on':'')+'">원작 ×2 / ×0.5 / ×0</button></div>'+
+ '<h3 style="margin-top:14px">규칙 요약</h3><ul class="tiny" style="padding-left:18px;margin:4px 0"><li>턴마다 에너지 3, 카드 5장. 남은 손패는 버린다.</li><li>피해 = 위력×0.15, 자속 ×1.25, 공격 랭크 +25%/단계.</li><li>HP = 종족값 + 50. 레벨은 없고 카드·도구·진화·배지로만 성장.</li><li>야생 승리 후 몬스터볼로 포획 → 파티 최대 3마리.</li></ul></div></div>'+
+ '<div class="panel lobby" style="text-align:left;max-width:740px;margin:0 auto 14px"><h3>함께 하기 (멀티플레이 상정)</h3><p class="tiny muted">실제 모드에서는 서버의 다른 플레이어가 들어오는 자리입니다. 체험판에서는 봇 동료가 각자 파티·덱·돈을 가지고 같은 지도를 진행합니다.</p>'+
+ '<div class="row" style="align-items:center"><span class="tiny">인원</span><div class="seg">'+[1,2,3,4].map(n=>'<button data-act="mpn" data-arg="'+n+'" class="'+(S.mp.n===n?'on':'')+'">'+(n===1?'혼자':n+'명')+'</button>').join('')+'</div>'+(S.mp.n>1?'<span class="tiny">적 강도</span><div class="seg"><button data-act="mpscale" data-arg="auto" class="'+(S.mp.scale==='auto'?'on':'')+'">자동</button><button data-act="mpscale" data-arg="on" class="'+(S.mp.scale==='on'?'on':'')+'">인원 비례</button><button data-act="mpscale" data-arg="off" class="'+(S.mp.scale==='off'?'on':'')+'">고정</button></div>':'')+'</div>'+
+ (S.mp.n>1?'<div class="choices" style="margin-top:10px"><button data-act="mpmode" data-arg="vote" class="'+(S.mp.mode==='vote'?'primary':'')+'">투표형 — 한 팀으로 이동<small>슬레이 더 스파이어 2 협동처럼 모두 같은 길을 간다. 노드마다 투표해 다수결로 이동하고 전투는 항상 함께. 적은 인원에 맞춰 강해지고(자동) 보상은 각자 전부 받는다.</small></button>'+
+ '<button data-act="mpmode" data-arg="split" class="'+(S.mp.mode==='split'?'primary':'')+'">분산형 — 따로 또 같이<small>각자 길을 고른다. 같은 노드를 고르면 함께 싸워 쉽지만 돈·카드 선택지를 나눠 갖고, 혼자 가면 보상을 독차지하되 위험하다. 적 강도는 고정(자동). 체육관은 전원이 합류해 관장을 함께 상대한다.</small></button></div>':'')+'</div>'+
+ '<div class="row" style="justify-content:center"><button class="primary" data-act="newrun" style="font-size:16px;padding:10px 22px">새 모험 시작</button><button data-act="demo" style="font-size:16px;padding:10px 22px">자동 시연 보기</button>'+(has?'<button data-act="continue" style="font-size:16px;padding:10px 22px">이어서 하기</button>':'')+'<button data-act="help">규칙 전체 보기</button></div></div>'; }
+function scrStarter(){ return '<div class="panel"><h2>오박사: 처음 함께할 포켓몬을 고르렴</h2><p class="muted tiny">스타터마다 시작 덱 10장과 특성이 다릅니다.</p><div class="row">'+STARTERS.map((s,i)=>{ const p=SP[s.sp]; const ab=ABIL[p.abil]; return '<div class="panel starter" data-act="starter" data-arg="'+i+'"><div class="row" style="align-items:center">'+pic(p.types,p.ko,p.sp,false,'big')+'<div><div class="nm" style="font-family:var(--display);font-size:20px">'+p.ko+'</div>'+p.types.map(typeTag).join(' ')+'</div></div><div class="tiny" style="margin-top:6px">HP '+(p.hp+50)+' · 특성 <b>'+ab[0]+'</b>: '+ab[1]+'</div><div class="tiny muted">'+s.arche+'</div><div class="tiny" style="margin-top:6px">덱: '+Object.entries(s.deck.reduce((a,id)=>{const n=M[id]?KO[id].n:T[id].name;a[n]=(a[n]||0)+1;return a;},{})).map(([n,c])=>n+(c>1?'×'+c:'')).join(', ')+'</div><div class="tiny muted">시작 열매: '+BERRIES[s.berry][0]+'</div></div>'; }).join('')+'</div></div>'; }
+function hsh(a,b){ let x=(a*374761393+b*668265263)|0; x=(x^(x>>>13))*1274126177|0; return ((x^(x>>>16))>>>0)/4294967296; }
+function mapDeco(f,colW,H){ const t=TERRAIN[f]; let o=''; const x0=colW*f; for(let i=0;i<10;i++){ const x=(x0+8+hsh(f+1,i)*(colW-16)).toFixed(1), y=(14+hsh(i+3,f+7)*(H-60)).toFixed(1); const X=+x,Y=+y;
+  if(t==='route') o+='<path d="M'+(X-4)+' '+(Y+6)+' l3 -9 l3 9 M'+(X+2)+' '+(Y+6)+' l2 -11 l2 11" stroke="#4f9a3a" stroke-width="1.8" fill="none" stroke-linecap="round"/>';
+  else if(t==='forest') o+='<path d="M'+(X-8)+' '+(Y+7)+' L'+X+' '+(Y-9)+' L'+(X+8)+' '+(Y+7)+'Z" fill="#2f6b2a"/><rect x="'+(X-1.5)+'" y="'+(Y+6)+'" width="3" height="5" fill="#5a3a1a"/>';
+  else if(t==='mount') o+='<path d="M'+(X-10)+' '+(Y+8)+' L'+X+' '+(Y-9)+' L'+(X+10)+' '+(Y+8)+'Z" fill="#9c8a62"/><path d="M'+(X-3.5)+' '+(Y-3)+' L'+X+' '+(Y-9)+' L'+(X+3.5)+' '+(Y-3)+'Z" fill="#f4f1e8"/>';
+  else if(t==='cave') o+='<ellipse cx="'+X+'" cy="'+Y+'" rx="7" ry="4.5" fill="#2f333d"/><ellipse cx="'+(X-2)+'" cy="'+(Y-1)+'" rx="2.5" ry="1.5" fill="#6b7180"/>';
+  else o+='<rect x="'+(X-6)+'" y="'+(Y-3)+'" width="12" height="10" fill="#8f8a7f"/><rect x="'+(X-7)+'" y="'+(Y-6)+'" width="14" height="4" fill="'+(t==='gym'?'#7a1c1c':'#6d6860')+'"/><rect x="'+(X-2)+'" y="'+(Y)+'" width="3" height="3" fill="#fff2c0"/>'; }
+  return o; }
+const MAP_DEFS='<defs>'+
+ '<symbol id="n-wild" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#dff3c4"/><path d="M12 30 l4 -14 l4 14 M18 30 l2 -16 l2 16 M24 30 l4 -12 l-2 12" stroke="#3f8f2a" stroke-width="3" fill="none" stroke-linecap="round"/></symbol>'+
+ '<symbol id="n-trainer" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ffe3b3"/><circle cx="18" cy="15" r="6" fill="#f3d2b0"/><path d="M12 15 a6 6 0 0 1 12 0z" fill="#e07b00"/><path d="M8 33 q10 -16 20 0z" fill="#e07b00"/><text x="29" y="15" font-size="14" font-family="Jua,sans-serif" fill="#c0392b" font-weight="700">!</text></symbol>'+
+ '<symbol id="n-event" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#e9dcff"/><rect x="18" y="19" width="4" height="13" fill="#7a5230"/><rect x="9" y="9" width="22" height="12" rx="2" fill="#a97b4f"/><text x="20" y="19" text-anchor="middle" font-size="11" font-family="Jua,sans-serif" fill="#fff">?</text></symbol>'+
+ '<symbol id="n-rest" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ffd6dc"/><rect x="10" y="18" width="20" height="14" fill="#fff"/><path d="M8 19 L20 8 L32 19Z" fill="#e05a6d"/><rect x="17" y="24" width="6" height="8" fill="#e05a6d"/><path d="M12 21 h4 M14 19 v4" stroke="#e05a6d" stroke-width="1.5"/></symbol>'+
+ '<symbol id="n-shop" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#cfe6ff"/><rect x="10" y="18" width="20" height="14" fill="#fff"/><path d="M8 19 L20 8 L32 19Z" fill="#2f8fc9"/><text x="20" y="30" text-anchor="middle" font-size="11" font-family="Jua,sans-serif" fill="#2f8fc9">$</text></symbol>'+
+ '<symbol id="n-treasure" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#fff0bf"/><rect x="9" y="17" width="22" height="13" rx="2" fill="#8b5a2b"/><rect x="9" y="12" width="22" height="7" rx="3" fill="#a9713a"/><rect x="18" y="17" width="4" height="6" fill="#d4a017"/></symbol>'+
+ '<symbol id="n-boss" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#f1d3d3"/><rect x="8" y="16" width="24" height="16" fill="#e8e4dc"/><path d="M6 17 L20 7 L34 17Z" fill="#7a1c1c"/><rect x="11" y="20" width="3" height="12" fill="#b9b2a3"/><rect x="26" y="20" width="3" height="12" fill="#b9b2a3"/><rect x="17" y="24" width="6" height="8" fill="#7a1c1c"/></symbol>'+
+ '</defs>';
+function marker(x,y,p,ghost){ const c=p.dead?'#777':PCOL[p.id%4]; return '<g opacity="'+(ghost?.6:1)+'"><circle cx="'+x+'" cy="'+(y-6)+'" r="5" fill="#f3d2b0"/><path d="M'+(x-5)+' '+(y-6)+' a5 5 0 0 1 10 0z" fill="'+c+'"/><path d="M'+(x-7)+' '+(y+9)+' q7 -14 14 0z" fill="'+c+'"'+(ghost?' stroke="#fff" stroke-dasharray="2 1.5"':'')+'/>'+(p.dead?'<text x="'+(x+4)+'" y="'+(y-8)+'" font-size="11" fill="#c0392b">×</text>':'')+'</g>'; }
+function scrMap(){ const r=H(); const mu=S.multi; const reach=reachableOf(r); const W=760, HH=340, colW=W/8;
+ let svg='<svg viewBox="0 0 '+W+' '+HH+'" width="'+W+'" height="'+HH+'" role="img" aria-label="관동지방 루트 지도">'+MAP_DEFS;
+ for(let f=0;f<8;f++){ const t=TERRAIN[f]; const c=TCOL[t]; svg+='<rect x="'+(colW*f)+'" y="0" width="'+colW+'" height="'+HH+'" fill="'+c[0]+'"/><rect x="'+(colW*f)+'" y="0" width="'+colW+'" height="'+HH+'" fill="url(#none)" opacity="0"/>'+mapDeco(f,colW,HH-26); }
+ svg+='<rect x="0" y="'+(HH-26)+'" width="'+W+'" height="26" fill="rgba(43,36,24,.75)"/>';
+ const pos=(n)=>({x:colW*n.f+colW/2,y:r.map[n.f].length===1?(HH-26)/2:62+n.l*98});
+ for(const row of r.map) for(const n of row) for(const l of n.next){ const a=pos(n), b=pos(r.map[n.f+1][l]); const d='M'+a.x+' '+a.y+' C'+(a.x+40)+' '+a.y+' '+(b.x-40)+' '+b.y+' '+b.x+' '+b.y; svg+='<path d="'+d+'" stroke="#b58f55" stroke-width="7" fill="none" stroke-linecap="round"/><path d="'+d+'" stroke="#e8d7a8" stroke-width="2" fill="none" stroke-dasharray="6 7" stroke-linecap="round"/>'; }
+ for(const row of r.map) for(const n of row){ const p=pos(n); const open=reach.includes(n); const cls='node '+(n.done?'done':open?'open':'off');
+   svg+='<g class="'+cls+'" '+(open?'data-act="node" data-arg="'+n.f+','+n.l+'"':'')+'><circle class="ring" cx="'+p.x+'" cy="'+p.y+'" r="22" fill="rgba(255,255,255,.45)" stroke="var(--line)" stroke-width="2"/><use href="#n-'+n.t+'" x="'+(p.x-19)+'" y="'+(p.y-19)+'" width="38" height="38"/>'+(r.pos&&r.pos.f===n.f&&r.pos.l===n.l&&!mu?'<circle cx="'+p.x+'" cy="'+p.y+'" r="27" fill="none" stroke="var(--fg)" stroke-width="2" stroke-dasharray="4 3"/>':'')+'</g>'; }
+ if(mu){ const off=[[-18,-26],[18,-26],[-18,28],[18,28]]; for(const p of mu.players){ const o=off[p.id%4]; const q=p.pos?pos(r.map[p.pos.f][p.pos.l]):{x:colW/2-30,y:(HH-26)/2}; svg+=marker(q.x+o[0],q.y+o[1],p,false);
+     const it=mu.intents[p.id]; if(it&&!p.dead&&p.bot){ const [f,l]=it.split(',').map(Number); const q2=pos(r.map[f][l]); svg+=marker(q2.x+o[0],q2.y+o[1],p,true); } } }
+ else if(!r.pos){ svg+=marker(colW/2-30,(HH-26)/2,r,false); }
+ for(let f=0;f<8;f++) svg+='<text x="'+(colW*f+colW/2)+'" y="'+(HH-8)+'" text-anchor="middle" font-size="12" font-family="Jua,sans-serif" fill="'+(r.pos&&r.pos.f===f?'#ffd36b':'#fff')+'">'+PLACES[f]+'</text>';
+ svg+='</svg>';
+ const alive=mu?mu.players.filter(p=>!p.dead):[]; const key=(n)=>n.f+','+n.l;
+ const goingTo=(n)=>alive.filter(p=>p.bot&&mu.intents[p.id]===key(n));
+ let h='<div class="map">'+svg+'</div><div class="row"><div class="panel grow"><h3>'+(r.pos?PLACES[r.pos.f]+'에서 다음 길을 고른다':'관동지방 모험의 시작. 어느 길로 갈까?')+'</h3>';
+ if(mu) h+='<p class="tiny muted" style="margin:4px 0">'+(mu.mode==='vote'?'투표형: 내 표와 동료의 표를 합쳐 다수결로 이동한다 (동률은 무작위).':'분산형: 같은 길을 고른 동료와 함께 싸운다. 혼자 가면 보상을 독차지하지만 위험하다.')+'</p>';
+ h+='<div class="choices" style="margin-top:8px">'+reach.map(n=>{ const g=goingTo(n); let tag=''; if(mu){ if(mu.mode==='vote') tag=g.length?'<span class="vote">'+g.map(p=>p.name).join('·')+' '+g.length+'표</span>':''; else tag=g.length?'<span class="vote">'+g.map(p=>p.name).join('·')+'와 함께 · 보상 1/'+(g.length+1)+'</span>':'<span class="vote">혼자 · 보상 전부</span>'; }
+   return '<button data-act="node" data-arg="'+n.f+','+n.l+'">'+NODE_TXT[n.t][0]+' <span class="pill">'+PLACES[n.f]+'</span>'+tag+'<small>'+NODE_TXT[n.t][1]+'</small></button>'; }).join('')+'</div></div>';
+ h+='<div class="panel" style="flex:1 1 260px"><h3>파티</h3>'+r.party.map((m,i)=>monCard(m,{small:true,active:S.mode==='switch'&&i===r.active})).join('')+(r.egg?'<div class="tiny">🥚 알: 전투 '+r.egg.left+'회 후 부화</div>':'')+'<div class="tiny muted" style="margin-top:6px">풀숲 야생 · 트레이너 · 표지판 이벤트 · 빨간 지붕 포켓몬센터 · 파란 지붕 상점 · 상자 보물 · 체육관</div>'+(r.berries.length?'<div style="margin-top:8px">'+r.berries.map((b,i)=>'<button class="tiny" data-act="berry" data-arg="'+i+'">'+BERRIES[b][0]+' 사용</button>').join(' ')+'</div>':'')+'</div>';
+ if(mu){ h+='<div class="panel" style="flex:1 1 260px"><h3>동료</h3>'+mu.players.filter(p=>p.bot).map(p=>'<div class="ally"><div class="row" style="align-items:center;gap:6px"><span class="pdot" style="background:'+PCOL[p.id%4]+'">'+p.name[0]+'</span><b>'+p.name+'</b>'+(p.dead?'<span class="st bad">쓰러짐</span>':'')+'<span class="tiny muted">'+p.money+'원 · 덱 '+p.deck.length+'장 · 볼 '+p.balls+(p.items.length?' · '+p.items.map(i=>ITEMS[i][0]).join(', '):'')+'</span></div>'+(p.dead?'':'<div class="row" style="gap:4px">'+p.party.map(m=>monCard(m,{small:true})).join('')+'</div>')+(!p.dead&&mu.intents[p.id]?'<div class="tiny muted">다음: '+(()=>{const [f,l]=mu.intents[p.id].split(',').map(Number); const n=r.map[f][l]; return NODE_TXT[n.t][0]+' ('+PLACES[f]+')';})()+'</div>':'')+'</div>').join('')+
+   (mu.news.length?'<div class="news"><b>동료 소식</b><ul style="padding-left:16px;margin:2px 0">'+mu.news.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'')+(mu.lastVote?'<div class="tiny muted" style="margin-top:4px">지난 투표: '+esc(mu.lastVote)+'</div>':'')+'</div>'; }
+ return h+'</div>'; }
+function stTags(m){ const o=[]; const n={poison:'독',burn:'화상',para:'마비',sleep:'잠듦',vuln:'허점',flinch:'풀죽음',aq:'아쿠아링',leech:'씨앗'}; for(const k in m.st){ if(k==='toxic'||k==='leechBy') continue; if(!m.st[k]) continue; o.push('<span class="st '+(['aq'].includes(k)?'good':'bad')+'">'+n[k]+(typeof m.st[k]==='number'&&k!=='leech'&&k!=='aq'?' '+m.st[k]:'')+'</span>'); }
+  for(const k of ['atk','def','spd']){ if(m.rk[k]) o.push('<span class="st '+(m.rk[k]>0?'good':'bad')+'">'+{atk:'공격',def:'방어',spd:'스피드'}[k]+(m.rk[k]>0?' +':' ')+m.rk[k]+'</span>'); } return o.join(''); }
+function monCard(m,o){ o=o||{}; const s=SP[m.sp]; const f=m.hp/m.maxHp; const ab=s.abil&&ABIL[s.abil];
+ return '<div class="mon '+(m.hp<=0?'fainted':'')+(o.active?' active':'')+(o.target?' target':'')+(o.bench?' bench':'')+'" data-uid="'+m.uid+'" '+(o.attr||'')+'><div class="row" style="align-items:center;gap:8px;flex-wrap:nowrap">'+pic(s.types,m.ko,m.sp,o.back,o.small?'sm':o.big?'big':'')+'<div style="min-width:0;flex:1"><div class="nm">'+m.ko+' '+s.types.map(typeTag).join('')+(m.block?' <span class="block">방어 '+m.block+'</span>':'')+'</div><div class="hpbar"><i class="'+hpCls(f)+'" style="width:'+(f*100)+'%"></i></div><div class="tiny" style="font-variant-numeric:tabular-nums">HP '+m.hp+'/'+m.maxHp+(ab&&!o.small?' · '+ab[0]:'')+'</div></div></div>'+(o.small?'':'<div>'+stTags(m)+'</div>')+(o.extra||'')+'</div>'; }
+function enemyCard(e,b,targetable){ const s=SP[e.sp]; const f=e.hp/e.maxHp; const id=e.intent; const d=M[id]; const fm=allField(b); const tg=fm.find(x=>x.uid===e.target)||fm[0]; const isAtk=d&&(d.dmg>0||d.fx.some(x=>x.k==='FIX'));
+ const intent=d?'<div class="intent">다음: '+typeTag(d.type)+' <b>'+(KO[id]?KO[id].n:id)+'</b> '+(isAtk?'피해 '+enemyDmg(e,id,tg)+(d.hits>1?'×'+d.hits:'')+(tg&&fm.length>1?' → '+(S.multi?ownerName(tg)+'의 ':'')+tg.ko:''):'<span class="muted">변화 기술</span>')+(e.st.sleep?' <span class="st bad">잠듦</span>':'')+'</div>':'';
+ return '<div class="mon '+(e.hp<=0?'fainted':'')+(targetable?' target':'')+'" data-uid="'+e.uid+'" '+(targetable?'data-act="target" data-arg="'+e.uid+'"':'')+'><div class="row" style="align-items:center;gap:8px;flex-wrap:nowrap">'+pic(s.types,e.ko,e.sp,false,'big')+'<div style="min-width:0;flex:1"><div class="nm">'+e.ko+' '+s.types.map(typeTag).join('')+(e.block?' <span class="block">방어 '+e.block+'</span>':'')+'</div><div class="hpbar"><i class="'+hpCls(f)+'" style="width:'+(f*100)+'%"></i></div><div class="tiny" style="font-variant-numeric:tabular-nums">HP '+e.hp+'/'+e.maxHp+(b.kind==='wild'?' · 포획률 '+Math.round(capP(e)*100)+'%':'')+'</div></div></div><div>'+stTags(e)+'</div>'+intent+'</div>'; }
+function cardHtml(c,i,o){ o=o||{}; const d=def(c); const b=S.run.battle; const why=o.noPlay?null:(b?canPlay(c):null); const col=d.type==='trainer'?'#777':TYPES[d.type][1];
+ let dmgTxt=''; if(b&&!o.noPlay&&(d.dmg||d.fx.some(f=>f.k==='FIX'))){ const e=b.enemies.find(x=>x.hp>0); const ow=cardOwner(c); if(e){ const v=calcCardDmg(c,e,ow); const m=eff(d.type,e.types); dmgTxt='<div class="tiny" style="color:'+(m>1.01?'var(--good)':m<.99?'var(--bad)':'var(--fg)')+'">예상 '+v+(d.hits>1?'×'+d.hits:'')+(m>1.01?' 굉장':m<.99?' 별로':'')+'</div>'; } }
+ const owner=c.owner?S.run.party.find(m=>m.uid===c.owner):null;
+ return '<div class="card '+(c.up?'up ':'')+(why?'off ':'')+(o.sel?'sel ':'')+(o.big?'big':'')+'" '+(o.attr||('data-act="card" data-arg="'+i+'"'))+' title="'+esc(why||(KO[c.id]?KO[c.id].d:''))+'"><span class="cost">'+ccost(c)+'</span><div class="cn">'+esc(cname(c))+'</div><div class="stripe" style="background:'+col+'"></div><div class="tiny">'+typeTag(d.type)+' <span class="cat '+d.cat+'">'+catName(d)+'</span></div><div class="cd">'+esc(cdesc(c))+'</div>'+dmgTxt+'<div class="ow">'+(owner?owner.ko+'의 기술':d.type==='trainer'?'트레이너':'주인 없음')+'</div></div>'; }
+function scrBattle(){ const r=H(), b=r.battle; const modeB=S.mode==='field'; const pl=plOf(b,r.id); const sel=b.curPid===r.id?b.sel:null; const mine=b.curPid===r.id;
+ const targetable=sel&&sel.kind==='enemy'; const allyPick=sel&&sel.kind==='ally'; const swPick=sel&&sel.kind==='switch'; const others=partRuns(b).filter(p=>p!==r);
+ let h='<div class="panel"><div class="row" style="justify-content:space-between;align-items:center"><h2>'+(b.kind==='boss'?'관장전: '+BOSS.name:b.kind==='wild'?'야생 포켓몬':b.kind==='elite'?'엘리트 트레이너':'트레이너 대전')+' <span class="pill">'+b.turn+'턴</span>'+(b.weather?' <span class="pill">'+{sun:'쾌청',rain:'비',sand:'모래바람'}[b.weather.w]+(b.weather.turns<90?' '+b.weather.turns:'')+'</span>':'')+(others.length?' <span class="pill" style="background:var(--good);color:#fff;border-color:transparent">'+(others.length+1)+'인 협동'+(S.multi&&S.multi.mode==='split'&&b.kind!=='boss'?' · 보상 1/'+(others.length+1):'')+'</span>':'')+'</h2>'+(b.queue.length?'<span class="tiny muted">대기 중: '+b.queue.map(q=>q.ko).join(', ')+'</span>':'')+'</div>';
+ h+='<div class="arena bg-'+TERRAIN[r.pos?r.pos.f:0]+' '+(b.weather?b.weather.w:'')+'" style="margin-top:8px"><div class="field '+(b.enemies.length>1?'three':'')+'">'+b.enemies.map(e=>enemyCard(e,b,targetable&&e.hp>0)).join('')+'</div>';
+ if(sel) h+='<div class="panel center" style="border-color:var(--accent)">'+(targetable?'<b>'+esc(cname(sel.card))+'</b>: 공격할 상대를 고르세요':allyPick?'<b>'+esc(cname(sel.card))+'</b>: 적용할 포켓몬을 고르세요':'교체할 포켓몬을 고르세요')+' <button data-act="cancel" class="tiny">취소</button></div>';
+ if(modeB){ h+='<div class="field three" style="margin-top:10px">'+r.party.map((m,i)=>monCard(m,{back:true,big:true,target:allyPick&&m.hp>0,attr:allyPick&&m.hp>0?'data-act="ally" data-arg="'+i+'"':''})).join('')+'</div>'; }
+ else { const a=r.party[r.active]; h+='<div class="row" style="margin-top:10px"><div class="grow">'+monCard(a,{active:true,back:true,big:true})+'</div><div style="flex:1 1 200px;min-width:0"><div class="tiny muted" style="margin-bottom:4px">벤치 '+(pl.freeSwitch&&!swPick?'(무료 교체 1회 남음: 클릭)':swPick?'(교체 카드: 클릭)':'(이번 턴 무료 교체 사용함)')+'</div>'+r.party.map((m,i)=>i===r.active?'':monCard(m,{small:true,bench:m.hp>0&&(pl.freeSwitch||swPick),attr:m.hp>0&&(pl.freeSwitch||swPick)?'data-act="bench" data-arg="'+i+'"':''})).join('')+(r.party.length<2?'<div class="tiny muted">벤치가 비어 있다. 야생 포켓몬을 잡아 보자.</div>':'')+'</div></div>'; }
+ if(others.length) h+='<div class="allies" style="margin-top:8px">'+others.map(p=>'<div class="ally"><div class="tiny"><span class="pdot" style="background:'+PCOL[p.id%4]+'">'+p.name[0]+'</span> <b>'+p.name+'</b>'+(b.busy&&b.curPid===p.id?' <span class="busyb">행동 중...</span>':'')+' <span class="muted">에너지 '+plOf(b,p.id).energy+' · 손패 '+plOf(b,p.id).hand.length+'</span></div><div class="row" style="gap:4px">'+p.party.map((m,i)=>monCard(m,{small:true,back:true,active:S.mode==='switch'&&i===p.active})).join('')+'</div></div>').join('')+'</div>';
+ h+='</div></div>';
+ h+='<div class="panel"><div class="row" style="align-items:center;justify-content:space-between"><div class="energy"><b>'+pl.energy+'</b>/3 <span class="tiny muted">에너지</span>'+(b.busy?' <span class="busyb">'+(b.curPid!==r.id&&b.botAct?playerById(b.curPid).name+'의 턴...':'상대 턴...')+'</span>':'')+'</div><div class="tiny muted">덱 '+pl.draw.length+' · 버림 '+pl.discard.length+' · 소멸 '+pl.exhaust.length+'</div><div>'+r.berries.map((x,i)=>'<button class="tiny" data-act="berry" data-arg="'+i+'">'+BERRIES[x][0]+'</button>').join(' ')+' <button class="primary" data-act="end" '+(b.busy||!mine?'disabled':'')+'>턴 종료</button></div></div>';
+ h+='<div class="hand">'+pl.hand.map((c,i)=>cardHtml(c,i,{sel:sel&&sel.idx===i})).join('')+(pl.hand.length?'':'<div class="muted tiny" style="padding:20px">손패가 없다</div>')+'</div>';
+ h+='<div class="log">'+b.log.slice(-10).map(esc).map(x=>'<div>'+x+'</div>').join('')+'</div></div>';
+ return h; }
+function scrReward(){ const r=S.run, rw=r.reward; let h='<div class="panel"><h2>'+(rw.kind==='treasure'?'보물상자를 열었다!':rw.kind==='boss'?'회색체육관 관장 웅을 이겼다!':'승리!')+'</h2>';
+ if(rw.captured) h+='<p><b>'+SP[rw.captured].ko+'</b>을(를) 잡아서 파티에 들어왔다. 그 포켓몬의 기술 카드 3장이 덱에 추가되었다.</p>'; if(rw.mates&&rw.mates.length) h+='<p class="tiny muted">'+rw.mates.join(', ')+'와(과) 함께 싸웠다'+(rw.share>1?' — 돈은 1/'+rw.share+', 카드 선택지는 2장':'')+'.</p>'; if(rw.hatch) h+='<p>🥚 '+esc(rw.hatch)+'</p>';
+ if(rw.money&&!rw.took.money){ h+='<div class="row" style="align-items:center"><button data-act="take" data-arg="money">'+rw.money+'원 받기</button>'+(rw.kind==='boss'?'<span class="tiny muted">관장의 상금</span>':'')+'</div>'; }
+ if(rw.badge&&!rw.took.badge) h+='<div class="row" style="align-items:center;margin-top:6px"><button class="primary" data-act="take" data-arg="badge">'+rw.badge+' 받기</button><span class="tiny muted">영구 보너스: 턴 시작마다 앞 포켓몬 방어 +2 (프로토에서는 기록만)</span></div>';
+ if(rw.berry&&!rw.took.berry) h+='<div class="row" style="align-items:center;margin-top:6px"><button data-act="take" data-arg="berry" '+(r.berries.length>=3?'disabled':'')+'>'+ico(rw.berry)+BERRIES[rw.berry][0]+' 받기</button><span class="tiny muted">'+BERRIES[rw.berry][1]+(r.berries.length>=3?' (열매 가방이 가득 참)':'')+'</span></div>';
+ if(rw.item&&!rw.took.item) h+='<div class="row" style="align-items:center;margin-top:6px"><button data-act="take" data-arg="item">'+ico(rw.item)+ITEMS[rw.item][0]+' 받기</button><span class="tiny muted">'+ITEMS[rw.item][1]+'</span></div>';
+ if(rw.items3&&!rw.took.items3) h+='<h3 style="margin-top:10px">지닌 도구 3택1</h3><div class="grid">'+rw.items3.map(i=>'<div class="item"><div class="nm">'+ico(i)+ITEMS[i][0]+'</div><div class="tiny">'+ITEMS[i][1]+'</div><button class="tiny" data-act="pickitem" data-arg="'+i+'" style="margin-top:6px">받기</button></div>').join('')+'</div>';
+ if(rw.capture&&!rw.took.capture){ const s=SP[rw.capture.sp]; h+='<h3 style="margin-top:10px">포획 기회</h3><div class="row" style="align-items:center">'+pic(s.types,s.ko,rw.capture.sp,false,'big')+'<div>쓰러진 <b>'+s.ko+'</b>에게 몬스터볼을 던진다 (성공 '+Math.round(rw.capture.p*100)+'%, 몬스터볼 '+r.balls+'개)</div><button data-act="capture" '+(r.balls<=0||rw.capAnim?'disabled':'')+'>'+ico('ball')+'몬스터볼 던지기</button></div>'; if(rw.capAnim) h+='<div class="row" style="align-items:center;margin-top:6px"><img class="ball" src="'+(SPR['i_poke-ball']||'')+'" alt=""><span class="capres">'+esc(rw.capMsg||'')+'</span></div>'; else if(rw.capMsg) h+='<p class="tiny">'+esc(rw.capMsg)+'</p>'; }
+ if(rw.cards.length&&!rw.took.cards) h+='<h3 style="margin-top:10px">기술 카드 '+rw.cards.length+'택1</h3><div class="hand">'+rw.cards.map((c,i)=>cardHtml(c,i,{noPlay:true,big:true,attr:'data-act="pickcard" data-arg="'+i+'"'})).join('')+'</div><button class="tiny" data-act="take" data-arg="cards">카드를 받지 않는다</button>';
+ if(rw.evo&&!rw.took.evo){ const cands=r.party.filter(canEvolve); h+='<h3 style="margin-top:10px">진화</h3>'+(cands.length?'<div class="row">'+cands.map(m=>'<button data-act="evolve" data-arg="'+m.uid+'">'+m.ko+' → '+SP[SP[m.sp].evo.to].ko+'</button>').join('')+'<button data-act="take" data-arg="evo">진화하지 않는다</button></div>':'<p class="tiny muted">지금 진화할 수 있는 포켓몬이 없다.</p>'); }
+ if(rw.partyFull){ h+='<div class="panel" style="border-color:var(--accent);margin-top:10px"><b>'+SP[rw.partyFull].ko+'</b>을(를) 잡았지만 파티가 가득 찼다.<div class="row" style="margin-top:6px">'+r.party.map((m,i)=>'<button data-act="replace" data-arg="'+i+'">'+m.ko+'와 교체</button>').join('')+'<button data-act="take" data-arg="fullcard">'+SP[rw.partyFull].ko+'의 기술 카드 1장만 받는다</button></div></div>'; }
+ h+='<div style="margin-top:14px"><button class="primary" data-act="'+(rw.kind==='boss'?'win':'tomap')+'">'+(rw.kind==='boss'?'1막 클리어!':'지도로')+'</button></div></div>'; return h; }
+function scrEvent(){ const r=S.run, ev=r.event; let h='<div class="panel">'; const e=EVENTS[ev.id];
+ h+='<h2>'+e.t+'</h2><p>'+e.d+'</p>'; if(ev.done){ h+='<p class="tiny">'+esc(ev.text)+'</p>'; if(ev.pickCard) h+=cardPickList(ev.pickCard.cards,'evpick',ev.pickCard.title); if(ev.upCard) h+=cardPickList(ev.upCard.cards,'evup','강화할 카드를 고르세요'); if(!ev.pickCard&&!ev.upCard) h+='<button class="primary" data-act="tomap">지도로</button>'; }
+ else h+='<div class="choices" style="max-width:520px">'+e.c(r).map(c=>'<button data-act="ev" data-arg="'+c[1]+'">'+c[0]+'</button>').join('')+'</div>';
+ return h+'</div>'; }
+function cardPickList(cards,act,title){ return '<h3>'+title+'</h3><div class="hand">'+cards.map((c,i)=>cardHtml(c,i,{noPlay:true,big:true,attr:'data-act="'+act+'" data-arg="'+i+'"'})).join('')+'</div>'; }
+function scrRest(){ const r=S.run; const ui=S.ui; let h='<div class="panel"><h2>포켓몬센터</h2><p class="muted">"어서 오세요! 포켓몬을 쉬게 할까요, 훈련할까요, 아니면... 진화의 기운이 느껴지네요."</p>';
+ if(ui.restDone) h+='<p>'+esc(ui.restDone)+'</p>'+(ui.upCards?cardPickList(ui.upCards,'restup','강화할 카드를 고르세요'):'<button class="primary" data-act="tomap">지도로</button>');
+ else { const cands=r.party.filter(canEvolve); h+='<div class="choices" style="max-width:520px"><button data-act="rest" data-arg="heal">회복<small>파티 전원 최대 HP의 30% 회복</small></button><button data-act="rest" data-arg="train">훈련<small>카드 1장 강화 (피해 +3 / 방어·회복 +3·+10 / 변화 카드는 코스트 -1)</small></button>'+cands.map(m=>'<button data-act="rest" data-arg="evo:'+m.uid+'">진화: '+m.ko+' → '+SP[SP[m.sp].evo.to].ko+'<small>최대 HP 상승, 새 기술 카드 1장. 회복은 없음</small></button>').join('')+'</div>'; }
+ return h+'</div>'; }
+function scrShop(){ const r=S.run, sh=r.shop; let h='<div class="panel"><div class="row" style="justify-content:space-between;align-items:center"><h2>프렌들리숍</h2><span class="pill">'+r.money+'원</span></div>';
+ h+='<h3 style="margin-top:8px">기술·트레이너 카드</h3><div class="hand">'+sh.cards.map((c,i)=>sh.sold['c'+i]?'':cardHtml(c,i,{noPlay:true,big:true,attr:'data-act="buycard" data-arg="'+i+'"'}).replace('</div>$','')+'').join('')+'</div><div class="tiny muted">카드 가격: 일반 50원 · 희귀 100원 (클릭해서 구매)</div>';
+ h+='<h3 style="margin-top:10px">도구·열매·볼</h3><div class="grid">'+sh.items.map(i=>sh.sold[i]?'':'<div class="item"><div class="nm">'+ico(i)+ITEMS[i][0]+'</div><div class="tiny">'+ITEMS[i][1]+'</div><button class="tiny" data-act="buyitem" data-arg="'+i+'" '+(r.money<ITEMS[i][2]?'disabled':'')+' style="margin-top:6px">'+ITEMS[i][2]+'원</button></div>').join('')+sh.berries.map(bk=>sh.sold[bk]?'':'<div class="item"><div class="nm">'+ico(bk)+BERRIES[bk][0]+'</div><div class="tiny">'+BERRIES[bk][1]+'</div><button class="tiny" data-act="buyberry" data-arg="'+bk+'" '+(r.money<BERRIES[bk][2]||r.berries.length>=3?'disabled':'')+' style="margin-top:6px">'+BERRIES[bk][2]+'원</button></div>').join('')+'<div class="item"><div class="nm">'+ico('ball')+'몬스터볼</div><div class="tiny">야생 포켓몬 포획에 1개 소모</div><button class="tiny" data-act="buyball" '+(r.money<50?'disabled':'')+' style="margin-top:6px">50원</button></div><div class="item"><div class="nm">기술 잊기</div><div class="tiny">덱에서 카드 1장 제거</div><button class="tiny" data-act="shoprm" '+(r.money<sh.removeCost||sh.sold.rm?'disabled':'')+' style="margin-top:6px">'+sh.removeCost+'원</button></div></div>';
+ if(S.ui.rmCards) h+=cardPickList(S.ui.rmCards,'shoprmpick','제거할 카드를 고르세요');
+ return h+'<div style="margin-top:12px"><button class="primary" data-act="tomap">가게를 나간다</button></div></div>'; }
+function scrDeck(){ const r=S.run; return '<div class="panel"><div class="row" style="justify-content:space-between;align-items:center"><h2>덱 '+r.deck.length+'장</h2><button data-act="back">돌아가기</button></div><div class="hand" style="flex-wrap:wrap">'+r.deck.map((c,i)=>cardHtml(c,i,{noPlay:true,attr:''})).join('')+'</div></div>'; }
+function scrOver(){ const r=H(); return '<div class="panel center"><h1>눈앞이 캄캄해졌다...</h1>'+(S.multi?'<p class="tiny muted">'+S.multi.players.filter(p=>p.bot).map(p=>p.name+(p.dead?' (쓰러짐)':' ('+placeOf(p.floor)+', 파티 '+p.party.map(m=>m.ko).join('·')+')')).join(' · ')+'</p>':'')+'<p>'+PLACES[Math.max(0,r.floor-1)]+'에서 쓰러졌다. 전투 승리 '+r.won+'회, 덱 '+r.deck.length+'장, 본 포켓몬 '+new Set(r.seen).size+'종.</p><p class="tiny muted">이번 런: '+(S.mode==='switch'?'교체형':'동시형')+' · 상성 '+(S.chart==='soft'?'완화':'원작')+'</p><button class="primary" data-act="title">처음으로</button></div>'; }
+function scrWin(){ const r=H(); return '<div class="panel center"><h1>회색배지 획득!</h1><p>1막 클리어. 파티: '+r.party.map(m=>m.ko).join(', ')+' · 덱 '+r.deck.length+'장 · 도구 '+(r.items.map(i=>ITEMS[i][0]).join(', ')||'없음')+'</p>'+(S.multi?'<p class="tiny">함께한 동료: '+S.multi.players.filter(p=>p.bot).map(p=>p.name+(p.dead?' (도중 쓰러짐)':' — '+p.party.map(m=>m.ko).join('·'))).join(' · ')+'</p>':'')+'<p class="muted">2막(월견산 → 블루시티, 관장 이슬)과 3막(리그)은 기획서 3.1절 참고. 체험판은 여기까지입니다.</p><p class="tiny muted">이번 런: '+(S.mode==='switch'?'교체형':'동시형')+' · 상성 '+(S.chart==='soft'?'완화':'원작')+'</p><button class="primary" data-act="title">처음으로</button></div>'; }
+
+function playFx(){ const b=S.run&&S.run.battle; if(!b||!b.fx||!b.fx.length) return; const list=b.fx; b.fx=[]; let i=0;
+  for(const f of list){ const el=app.querySelector('[data-uid="'+f.uid+'"]'); if(!el) continue; const delay=i*110; i++;
+    setTimeout(()=>{ if(!el.isConnected) return;
+      if(f.k==='atk'){ const col=f.type==='trainer'?'#999':TYPES[f.type][1]; const bu=document.createElement('div'); bu.className='burst'; bu.style.background='radial-gradient(circle,'+col+',transparent 70%)'; el.appendChild(bu); setTimeout(()=>bu.remove(),600); if(f.eff>1.01) SFX.play('super'); else if(f.eff<.99) SFX.play('weak'); else SFX.play('hit'); if(f.eff>1.01) num(el,'효과가 굉장했다!','super',0); else if(f.eff<.99) num(el,'효과가 별로다','txt',0); }
+      else if(f.k==='dmg'){ el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); num(el,'-'+f.v,'dmg',8); if(f.blocked) num(el,'방어 '+f.blocked,'txt',44); }
+      else if(f.k==='heal'){ num(el,'+'+f.v,'heal',8); SFX.play('heal'); }
+      else if(f.k==='txt'){ num(el,f.t,'txt',22); SFX.play('status'); }
+      else if(f.k==='faint'){ el.classList.add('fainting'); SFX.play('faint'); }
+    },delay); } }
+function num(el,text,cls,top){ const n=document.createElement('div'); n.className='fnum '+cls; n.textContent=text; n.style.top=top+'px'; el.appendChild(n); setTimeout(()=>n.remove(),1100); }
+/* ---------- 효과음 (WebAudio 합성, 외부 파일 없음) ---------- */
+const SFX={ctx:null,on(){ if(S.mute) return null; try{ if(!this.ctx) this.ctx=new (window.AudioContext||window.webkitAudioContext)(); if(this.ctx.state==='suspended') this.ctx.resume(); return this.ctx; }catch(e){ return null; } },
+  tone(f,t,type,g,slide){ const c=this.on(); if(!c) return; const o=c.createOscillator(), v=c.createGain(); o.type=type||'square'; o.frequency.setValueAtTime(f,c.currentTime); if(slide) o.frequency.exponentialRampToValueAtTime(slide,c.currentTime+t); v.gain.setValueAtTime(g||.05,c.currentTime); v.gain.exponentialRampToValueAtTime(.0005,c.currentTime+t); o.connect(v); v.connect(c.destination); o.start(); o.stop(c.currentTime+t); },
+  noise(t,g){ const c=this.on(); if(!c) return; const n=Math.floor(c.sampleRate*t), buf=c.createBuffer(1,n,c.sampleRate), d=buf.getChannelData(0); for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n); const s=c.createBufferSource(); s.buffer=buf; const v=c.createGain(); v.gain.value=g||.08; const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1800; s.connect(f); f.connect(v); v.connect(c.destination); s.start(); },
+  play(k){ if(S.headless) return; try{ switch(k){ case 'hit': this.noise(.12,.1); this.tone(180,.12,'square',.04,90); break; case 'super': this.noise(.18,.14); this.tone(320,.2,'sawtooth',.05,80); break; case 'weak': this.tone(200,.1,'triangle',.03,150); break;
+    case 'heal': [523,659,784].forEach((f,i)=>setTimeout(()=>this.tone(f,.15,'sine',.05),i*70)); break; case 'status': this.tone(440,.08,'square',.03,330); break; case 'card': this.tone(900,.05,'square',.02,1200); break; case 'end': this.tone(300,.08,'triangle',.03); break;
+    case 'faint': this.tone(400,.5,'sawtooth',.05,60); break; case 'win': [392,523,659,784].forEach((f,i)=>setTimeout(()=>this.tone(f,.18,'square',.05),i*110)); break; case 'lose': [330,262,196].forEach((f,i)=>setTimeout(()=>this.tone(f,.3,'triangle',.05),i*220)); break;
+    case 'throw': this.tone(700,.15,'sine',.04,300); [0,500,1000].forEach(d=>setTimeout(()=>this.tone(250,.06,'square',.04),400+d)); break; case 'capok': setTimeout(()=>[523,659,784,1046].forEach((f,i)=>setTimeout(()=>this.tone(f,.15,'square',.05),i*90)),1500); break; case 'capfail': setTimeout(()=>this.tone(300,.3,'sawtooth',.05,120),1500); break; case 'evolve': [440,554,659,880].forEach((f,i)=>setTimeout(()=>this.tone(f,.25,'sine',.05),i*120)); break; case 'buy': this.tone(1200,.08,'square',.03); break; } }catch(e){} } };
+/* ---------- 자동 진행 (봇 시뮬레이션) ---------- */
+let autoTimer=null;
+function scheduleAuto(){ clearTimeout(autoTimer); if(!S.auto||!S.run) return; autoTimer=setTimeout(autoTick,S.screen==='battle'?650:900); }
+function autoTick(){ if(!S.auto||!S.run||S.headless||S.resolving) return; const r=S.run, scr=S.screen; try{
+  if(scr==='map'){ const re=reachable(); if(re.length) chooseNode(pick(re)); return; }
+  if(scr==='battle'){ const b=r.battle; if(b.busy||b.over) return; if(b.sel&&b.sel.kind==='switch'){ const i=r.party.findIndex((m,k)=>k!==r.active&&m.hp>0); if(i>=0) doSwitch(i); b.sel=null; render(); return; }
+    if(S.mode==='switch'&&b.freeSwitch&&r.party[r.active].hp<r.party[r.active].maxHp*.3){ const i=r.party.findIndex((m,k)=>k!==r.active&&m.hp>r.party[r.active].hp); if(i>=0){ doSwitch(i); b.freeSwitch=false; for(const e of b.enemies) if(e.hp>0) e.target=r.party[r.active].uid; render(); return; } }
+    const order=b.hand.map((c,i)=>i).sort((x,y)=>(def(b.hand[y]).dmg||0)-(def(b.hand[x]).dmg||0));
+    for(const i of order){ const c=b.hand[i]; if(canPlay(c)) continue; const nt=needsTarget(c); if(nt==='enemy'){ const e=b.enemies.filter(x=>x.hp>0).sort((p,q)=>p.hp-q.hp)[0]; playCard(i,{kind:'enemy',e}); } else if(nt==='ally'){ const fm=fieldMons().slice().sort((p,q)=>p.hp/p.maxHp-q.hp/q.maxHp); playCard(i,{kind:'ally',m:fm[0]}); } else playCard(i); return; }
+    endTurn(); return; }
+  if(scr==='reward'){ const rw=r.reward; if(rw.capAnim) return; if(rw.money&&!rw.took.money){ takeReward('money'); return; } if(rw.badge&&!rw.took.badge){ takeReward('badge'); return; } if(rw.berry&&!rw.took.berry){ takeReward('berry'); return; } if(rw.item&&!rw.took.item){ takeReward('item'); return; }
+    if(rw.items3&&!rw.took.items3){ r.items.push(rw.items3[0]); rw.took.items3=true; render(); return; } if(rw.cards&&rw.cards.length&&!rw.took.cards){ const best=rw.cards.slice().sort((x,y)=>(def(y).dmg||0)-(def(x).dmg||0))[0]; r.deck.push(best); rw.took.cards=true; render(); return; }
+    if(rw.capture&&!rw.took.capture&&r.balls>0&&r.party.length<3){ const bt=app.querySelector('[data-act=capture]'); if(bt&&!bt.disabled){ bt.click(); return; } } if(rw.capture&&!rw.took.capture){ rw.took.capture=true; }
+    if(rw.partyFull){ takeReward('fullcard'); return; } if(rw.evo&&!rw.took.evo){ const bt=app.querySelector('[data-act=evolve]'); if(bt){ bt.click(); return; } rw.took.evo=true; render(); return; }
+    const go=app.querySelector('[data-act='+(rw.kind==='boss'?'win':'tomap')+']'); if(go) go.click(); return; }
+  if(scr==='event'){ const ev=r.event; if(!ev.done){ doEvent(EVENTS[ev.id].bot); return; } if(ev.pickCard){ const cs=ev.pickCard.cards; const i=Math.max(0,cs.findIndex(x=>['guard','growl','tailwhip','splashc'].includes(x.id))); const bt=app.querySelectorAll('[data-act=evpick]')[i]; if(bt) bt.click(); return; } if(ev.upCard){ const bt=app.querySelector('[data-act=evup]'); if(bt) bt.click(); return; } const go=app.querySelector('[data-act=tomap]'); if(go) go.click(); return; }
+  if(scr==='rest'){ if(S.ui.upCards){ const bt=app.querySelector('[data-act=restup]'); if(bt) bt.click(); return; } if(S.ui.restDone){ const go=app.querySelector('[data-act=tomap]'); if(go) go.click(); return; } const m=r.party.find(canEvolve); doRest(m?'evo:'+m.uid:(r.party.some(x=>x.hp<x.maxHp*.6)?'heal':'train')); return; }
+  if(scr==='shop'){ const sh=r.shop; if(!sh.sold.c0&&sh.cards[0]&&r.money>=(def(sh.cards[0]).rare?100:50)){ const bt=app.querySelector('[data-act=buycard]'); if(bt){ bt.click(); return; } } if(r.money>=50&&r.balls<3){ const bt=app.querySelector('[data-act=buyball]'); if(bt){ bt.click(); return; } } const go=app.querySelector('[data-act=tomap]'); if(go) go.click(); return; }
+  if(scr==='gameover'||scr==='win'){ S.auto=false; render(); return; }
+  }catch(e){ console.error('auto',e); S.auto=false; render(); } }
+/* ---------- 멀티(협동) 흐름 · 봇 ---------- */
+function botPickNode(p,re){ const hpf=p.party.reduce((a,m)=>a+m.hp,0)/Math.max(1,p.party.reduce((a,m)=>a+m.maxHp,0));
+  const scored=re.map(n=>{ let sc=Math.random()*2; if(n.t==='rest') sc+=hpf<.5?5:1; if(n.t==='shop') sc+=p.money>=100?3:0; if(n.t==='treasure') sc+=4; if(n.t==='wild') sc+=p.party.length<3&&p.balls>0?2.5:1.5; if(n.t==='trainer') sc+=hpf>.6?2:0; if(n.t==='event') sc+=1.5; if(n.t==='boss') sc+=10; return [sc,n]; });
+  return scored.reduce((a,b)=>b[0]>a[0]?b:a)[1]; }
+function planBots(){ const mu=S.multi; if(!mu) return; for(const p of mu.players){ if(!p.bot||p.dead){ delete mu.intents[p.id]; continue; } const re=reachableOf(p); if(!re.length){ delete mu.intents[p.id]; continue; } const n=botPickNode(p,re); mu.intents[p.id]=n.f+','+n.l; } }
+async function chooseNode(n){ const r=H(); S.run=r; if(S.resolving||!reachableOf(r).includes(n)) return;
+  if(!S.multi){ enterNode(n); return; }
+  const mu=S.multi; const key=n.f+','+n.l; const alive=mu.players.filter(p=>!p.dead); let node=n, group;
+  if(mu.mode==='vote'){ const votes={}; votes[key]=1; for(const p of alive) if(p.bot&&mu.intents[p.id]) votes[mu.intents[p.id]]=(votes[mu.intents[p.id]]||0)+1;
+    const top=Math.max(...Object.values(votes)); const wk=pick(Object.keys(votes).filter(k=>votes[k]===top)); const [f,l]=wk.split(',').map(Number); node=r.map[f][l]; group=alive;
+    mu.lastVote=Object.entries(votes).map(([k,v])=>{ const [f2,l2]=k.split(',').map(Number); return NODE_TXT[r.map[f2][l2].t][0]+' '+v+'표'; }).join(' · ')+' → '+NODE_TXT[node.t][0]; }
+  else group=[r].concat(alive.filter(p=>p.bot&&mu.intents[p.id]===key));
+  mu.floorNews=[]; await enterGroup(node,group); }
+async function enterGroup(n,group){ const me=H(); for(const p of group) visit(p,n);
+  if(n.t==='wild'||n.t==='trainer'||n.t==='boss'){ S.run=me; startBattle(n.t,{parts:group}); if(S.multi&&S.multi.lastVote&&S.multi.mode==='vote') log('투표: '+S.multi.lastVote); return; }
+  const bots=group.filter(p=>p.bot); if(bots.length) await headlessGroup(bots,n);
+  S.run=me; S.ui={}; openNode(n); }
+async function toMap(){ const r=H(); S.run=r; r.reward=null; r.event=null; r.shop=null; S.ui={}; S.screen='map'; if(S.multi){ S.resolving=true; render(); try{ await resolveFloor(); } finally{ S.resolving=false; } } render(); }
+async function resolveFloor(){ const mu=S.multi; if(!mu) return; const me=H(); const pend=mu.players.filter(p=>p.bot&&!p.dead&&p.floor<me.floor);
+  const groups={}; for(const p of pend){ const re=reachableOf(p); if(!re.length) continue; let k=mu.intents[p.id]; if(!k||!re.some(n=>n.f+','+n.l===k)){ const n=botPickNode(p,re); k=n.f+','+n.l; } (groups[k]||(groups[k]=[])).push(p); }
+  for(const k in groups){ const [f,l]=k.split(',').map(Number); const n=me.map[f][l]; const g=groups[k]; for(const p of g) visit(p,n); await headlessGroup(g,n); }
+  mu.news=mu.floorNews.slice(); mu.floorNews=[]; planBots(); }
+async function headlessGroup(bots,n){ const keep={run:S.run,screen:S.screen,ui:S.ui}; S.headless=true; clearTimeout(autoTimer); const mu=S.multi; const names=bots.map(p=>p.name).join(', ');
+  try{ if(n.t==='wild'||n.t==='trainer'||n.t==='boss'){ S.run=bots[0]; startBattle(n.t,{parts:bots,lead:bots[0]}); const b=S.run.battle; let g=0; while(S.screen==='battle'&&g++<150){ await botTurn(b); if(S.screen!=='battle') break; await endTurn(); }
+      if(S.screen==='gameover'){ for(const p of bots) p.dead=true; mu.floorNews.push(names+': '+PLACES[n.f]+'의 '+NODE_TXT[n.t][0]+'에서 쓰러졌다...'); }
+      else if(S.screen==='battle'){ b.over='draw'; mu.floorNews.push(names+': 전투가 길어져 도망쳤다.'); }
+      else mu.floorNews.push(names+': '+PLACES[n.f]+' '+(b.kind==='boss'?'관장전':b.kind==='wild'?'야생 '+b.enemies.map(e=>e.ko).join('·'):'트레이너')+' 승리 ('+bots.map(p=>p.name+' HP '+p.party.map(m=>m.hp).join('/')+(p.lastNews?' '+p.lastNews:'')).join(', ')+')'); }
+    else { for(const p of bots){ S.run=p; S.ui={}; p.lastNews=''; openNode(n); let g=0; while(g++<40){ if(S.screen==='battle'){ const b=p.battle; await botTurn(b); if(S.screen==='battle') await endTurn(); } else if(['reward','event','rest','shop'].includes(S.screen)) botStep(p); else break; }
+        if(S.screen==='gameover'){ p.dead=true; mu.floorNews.push(p.name+': '+PLACES[n.f]+'에서 쓰러졌다...'); } else mu.floorNews.push(p.name+': '+PLACES[n.f]+' '+(p.lastNews||NODE_TXT[n.t][0])); } }
+  } finally { for(const p of bots){ p.battle=null; p.reward=null; p.event=null; p.shop=null; p.lastNews=''; } S.headless=false; S.run=keep.run; S.screen=keep.screen; S.ui=keep.ui; } }
+async function botTurn(b){ const r=S.run; let g=0; b.botAct=true;
+  try{ while(g++<15&&!b.over&&S.screen==='battle'){
+    if(b.sel&&b.sel.kind==='switch'){ const i=r.party.findIndex((m,k)=>k!==r.active&&m.hp>0); if(i>=0) doSwitch(i); b.sel=null; }
+    if(S.mode==='switch'&&b.freeSwitch&&r.party[r.active].hp<r.party[r.active].maxHp*.3){ const i=r.party.findIndex((m,k)=>k!==r.active&&m.hp>r.party[r.active].hp); if(i>=0){ doSwitch(i); b.freeSwitch=false; } }
+    const order=b.hand.map((c,i)=>i).sort((x,y)=>(def(b.hand[y]).dmg||0)-(def(b.hand[x]).dmg||0)); let played=false;
+    for(const i of order){ const c=b.hand[i]; if(canPlay(c)) continue; const nt=needsTarget(c); if(nt==='enemy'){ const e=b.enemies.filter(x=>x.hp>0).sort((p,q)=>p.hp-q.hp)[0]; playCard(i,{kind:'enemy',e}); } else if(nt==='ally'){ const fm=fieldMons().slice().sort((p,q)=>p.hp/p.maxHp-q.hp/q.maxHp); playCard(i,{kind:'ally',m:fm[0]}); } else playCard(i); played=true; break; }
+    if(!played) break; await sleep(S.auto?250:380); } }
+  finally{ b.botAct=false; } }
+function botTakeReward(r,rw){ const keep=S.run; S.run=r; const notes=[];
+  r.money+=rw.money||0; if(rw.berry&&r.berries.length<3) r.berries.push(rw.berry); if(rw.item){ r.items.push(rw.item); notes.push('도구 '+ITEMS[rw.item][0]); } if(rw.items3&&rw.items3.length){ r.items.push(rw.items3[0]); notes.push('도구 '+ITEMS[rw.items3[0]][0]); }
+  if(rw.cards&&rw.cards.length){ const best=rw.cards.slice().sort((x,y)=>(def(y).dmg||0)-(def(x).dmg||0))[0]; r.deck.push(best); notes.push('카드 '+cname(best)); }
+  if(rw.capture&&r.balls>0&&r.party.length<3){ r.balls--; if(chance(rw.capture.p)){ r.party.push(joinMon(rw.capture.sp)); notes.push(SP[rw.capture.sp].ko+' 포획!'); } else notes.push('포획 실패'); }
+  if(rw.captured) notes.push(SP[rw.captured].ko+' 포획!'); if(rw.hatch) notes.push('알 부화');
+  if(rw.evo){ const m=r.party.find(canEvolve); if(m){ const was=m.ko; evolve(m); notes.push(was+' → '+m.ko+' 진화'); } } if(rw.badge) r.badges.push(rw.badge);
+  r.lastNews=notes.join(', '); S.run=keep; }
+function botStep(r){ const scr=S.screen; S.run=r;
+  if(scr==='reward'){ const rw=r.reward; botTakeReward(r,rw); r.reward=null; if(rw.kind==='boss'){ S.screen='win'; } else S.screen='map'; return; }
+  if(scr==='event'){ const ev=r.event; if(!ev.done){ doEvent(EVENTS[ev.id].bot); if(S.screen!=='event') return; }
+    if(ev.pickCard){ const cs=ev.pickCard.cards; const c=cs.find(x=>['guard','growl','tailwhip','splashc'].includes(x.id))||cs[0]; if(c){ if(ev.pickCard.mode==='remove') r.deck=r.deck.filter(x=>x.uid!==c.uid); else if(ev.pickCard.mode==='trade'){ r.deck=r.deck.filter(x=>x.uid!==c.uid); const o=r.party.find(m=>m.uid===c.owner); const pool=o?SP[o.sp].pool.filter(id=>M[id]&&M[id].rare):[]; if(pool.length) r.deck.push(mkCard(pick(pool),o.uid)); } else r.deck.push(c); } ev.pickCard=null; }
+    if(ev.upCard){ const c=ev.upCard.cards[0]; if(c) c.up=true; ev.upCard=null; }
+    r.lastNews=EVENTS[ev.id].t+': '+ev.text; r.event=null; S.screen='map'; return; }
+  if(scr==='rest'){ const m=r.party.find(canEvolve); const k=m?'evo:'+m.uid:(r.party.some(x=>x.hp<x.maxHp*.6)?'heal':'train'); doRest(k); if(S.ui.upCards&&S.ui.upCards[0]) S.ui.upCards[0].up=true; r.lastNews='포켓몬센터: '+(k==='heal'?'회복':k==='train'?'훈련':'진화'); S.ui={}; S.screen='map'; return; }
+  if(scr==='shop'){ const sh=r.shop; const bought=[]; if(sh.cards[0]&&r.money>=(def(sh.cards[0]).rare?100:50)){ r.money-=def(sh.cards[0]).rare?100:50; r.deck.push(sh.cards[0]); bought.push(cname(sh.cards[0])); } if(r.money>=50&&r.balls<3){ r.money-=50; r.balls++; bought.push('몬스터볼'); } for(const bk of sh.berries){ if(r.money>=BERRIES[bk][2]&&r.berries.length<3){ r.money-=BERRIES[bk][2]; r.berries.push(bk); bought.push(BERRIES[bk][0]); break; } }
+    r.lastNews='상점: '+(bought.join(', ')||'구경만 함'); r.shop=null; S.screen='map'; return; }
+}
+/* ---------- 도움말 ---------- */
+function helpHtml(){ return '<div class="help"><div class="row" style="justify-content:space-between;align-items:center"><h2>규칙 (기획서 v0.1 요약)</h2><button data-act="closedlg">닫기</button></div>'+
+'<h3 style="margin-top:10px">한 턴</h3><ol style="padding-left:18px"><li>턴 시작: 에너지 3, 카드 5장 드로우(스피드 랭크만큼 ±, 최대 +2), 방어 0으로, 독·화상·씨뿌리기·날씨 처리, 충전 기술 발동.</li><li>카드 사용. 적의 <b>의도</b>(다음 기술과 예상 피해)는 항상 보인다.</li><li>턴 종료: 손패를 버리고 적이 행동한다.</li></ol>'+
+'<h3>피해</h3><p>피해 = round(위력×0.15) × 종족값 보정(±30%) × 자속 1.25 × 상성 × 랭크(공격 +25%/단계, 방어 −20%/단계) × 허점 1.5 × 날씨. 적의 방어 종족값도 ±20% 반영.</p>'+
+'<h3>파티 방식 비교</h3><table><tr><th></th><th>교체형</th><th>동시형</th></tr><tr><td>필드</td><td>앞 1마리, 벤치 2마리</td><td>최대 3마리 전부</td></tr><tr><td>피해 대상</td><td>앞 포켓몬만</td><td>적이 HP 낮은 쪽을 자주 노림</td></tr><tr><td>카드 사용</td><td>누구 기술이든 사용 가능, 자속은 앞 포켓몬 기준</td><td>소유 포켓몬이 서 있어야 사용 가능, 자속은 소유자 기준</td></tr><tr><td>교체</td><td>턴마다 무료 1회 + 교체·후퇴 카드</td><td>없음</td></tr><tr><td>적</td><td>단독, 트레이너는 순서대로</td><td>2마리 동시가 흔함, 적 HP +15%</td></tr><tr><td>쓰러짐</td><td>벤치가 자동 등판</td><td>남은 포켓몬으로 계속</td></tr></table>'+
+'<h3>상태이상</h3><table><tr><td>독</td><td>턴 시작에 스택만큼 피해, 스택 −1 (맹독은 +1)</td></tr><tr><td>화상</td><td>턴 시작 2 피해, 물리 피해 −25%, 3턴</td></tr><tr><td>마비</td><td>내 포켓몬: 다음 턴 에너지 −1 / 적: 25% 행동 실패, 피해 −25%</td></tr><tr><td>잠듦</td><td>내 포켓몬: 드로우 −2 / 적: 다음 행동 건너뜀</td></tr><tr><td>허점</td><td>받는 피해 ×1.5</td></tr><tr><td>풀죽음</td><td>적의 다음 행동 피해 절반</td></tr></table>'+
+'<h3>성장</h3><p>레벨 없음. 카드 보상(야생·트레이너·상점), 지닌 도구(트레이너·보물·관장), 진화(포켓몬센터·이끼 낀 바위·달의돌·관장전 후, 1진화는 월견산 기슭부터), 배지. 전투가 끝나면 쓰러진 포켓몬은 HP 20%로 일어난다.</p>'+
+'<h3>포획</h3><p>야생 전투 중 몬스터볼 던지기 카드(성공률 = 종 포획률 × 남은 HP) 또는 승리 후 선택. 파티는 최대 3마리. 영입하면 그 포켓몬의 기술 카드 3장이 덱에 들어오고 보상 풀에도 섞인다.</p>'+
+'<h3>멀티플레이 (상정)</h3><table><tr><th></th><th>투표형</th><th>분산형</th></tr><tr><td>이동</td><td>모두 같은 길. 노드마다 투표, 다수결(동률은 무작위)</td><td>각자 길 선택. 같은 노드면 합류</td></tr><tr><td>전투</td><td>항상 전원 협동. 각자 에너지 3·손패, 적은 모든 참가자의 포켓몬을 노린다</td><td>같은 노드끼리 협동, 혼자면 단독. 체육관은 전원 합류</td></tr><tr><td>적 강도</td><td>인원 비례(야생 HP +20%/명, 트레이너 +45%/명, 피해 +10%/명)</td><td>고정 (관장만 인원 비례)</td></tr><tr><td>보상</td><td>각자 전부</td><td>함께면 돈 1/n, 카드 선택지 2장, 도구·열매·포획은 1명에게. 혼자면 전부</td></tr><tr><td>진행</td><td colspan=2>지역 단위로 동시 진행. 내가 없는 그룹은 봇이 같은 엔진으로 자동 처리하고 결과가 "동료 소식"에 뜬다</td></tr></table>'+
+'<h3>이 체험판에서 빠진 것</h3><p class="muted">2·3막, 특성 대부분(맹화·급류·심록·정전기만), 배지 효과, 날씨 외 필드, 포켓몬 3D 모델, 소리. 적 AI는 공격 2회 뒤 변화 기술 1회의 단순 순환.</p></div>'; }
+
+/* ---------- 입력 ---------- */
+app.addEventListener('click',(ev)=>{ const el=ev.target.closest('[data-act]'); if(!el||el.disabled) return; const act=el.dataset.act, arg=el.dataset.arg; const r=H(); const b=r&&r.battle;
+  if(b&&S.screen==='battle'&&(b.busy||(S.multi&&b.curPid!==H().id))&&['card','target','ally','bench','end','berry','cancel'].includes(act)) return;
+  if(S.resolving&&act==='node') return;
+  switch(act){
+    case 'mpn': S.mp.n=+arg; render(); break; case 'mpmode': S.mp.mode=arg; render(); break; case 'mpscale': S.mp.scale=arg; render(); break;
+    case 'mode': S.mode=arg; render(); break; case 'auto': S.auto=!S.auto; render(); break; case 'mute': S.mute=!S.mute; try{localStorage.setItem('cobblespire-mute',S.mute?'1':'');}catch(e){} render(); break; case 'chart': S.chart=arg; render(); break;
+    case 'newrun': S.auto=false; S.screen='starter'; render(); break; case 'demo': S.auto=true; startRun(R(3)); break; case 'continue': if(load()) render(); break;
+    case 'starter': startRun(+arg); break;
+    case 'help': showDlg(helpHtml()); break; case 'closedlg': document.getElementById('dlg').close(); break;
+    case 'deck': S.ui.back=S.screen; S.screen='deck'; render(); break; case 'back': S.screen=S.ui.back||'map'; render(); break;
+    case 'quit': S.ui.back=S.screen; showDlg('<h3>모험을 포기할까요?</h3><p class="tiny muted">진행 중인 런이 지워집니다.</p><div class="row"><button class="primary" data-act="quitok">포기</button><button data-act="closedlg">계속한다</button></div>'); break;
+    case 'quitok': document.getElementById('dlg').close(); S.run=null; S.multi=null; S.screen='title'; try{localStorage.removeItem('cobblespire-proto');}catch(e){} render(); break;
+    case 'title': S.run=null; S.multi=null; S.screen='title'; try{localStorage.removeItem('cobblespire-proto');}catch(e){} render(); break;
+    case 'node': { const [f,l]=arg.split(',').map(Number); const n=r.map[f][l]; chooseNode(n); } break;
+    case 'card': { const i=+arg; const c=b.hand[i]; const why=canPlay(c); if(why){ toast(why); return; } const nt=needsTarget(c); if(nt){ b.sel={kind:nt,idx:i,card:c}; render(); } else playCard(i); } break;
+    case 'target': { if(!b.sel||b.sel.kind!=='enemy') return; const e=b.enemies.find(x=>x.uid===+arg); const i=b.sel.idx; playCard(i,{kind:'enemy',e}); } break;
+    case 'ally': { if(!b.sel||b.sel.kind!=='ally') return; const m=r.party[+arg]; playCard(b.sel.idx,{kind:'ally',m}); } break;
+    case 'bench': { const i=+arg; if(b.sel&&b.sel.kind==='switch'){ doSwitch(i); b.sel=null; } else if(b.freeSwitch){ doSwitch(i); b.freeSwitch=false; } for(const e of b.enemies) if(e.hp>0&&!fieldMons().some(m=>m.uid===e.target)) e.target=fieldMons()[0]&&fieldMons()[0].uid; render(); } break;
+    case 'cancel': b.sel=null; render(); break;
+    case 'end': endTurn(); break;
+    case 'berry': useBerry(+arg); break;
+    case 'take': takeReward(arg); break;
+    case 'pickitem': r.items.push(arg); r.reward.took.items3=true; render(); break;
+    case 'pickcard': { const c=r.reward.cards[+arg]; r.deck.push(c); r.reward.took.cards=true; render(); } break;
+    case 'capture': { const rw=r.reward; if(rw.capAnim) return; r.balls--; rw.capAnim=true; SFX.play('throw'); setTimeout(()=>{ rw.capAnim=false; if(S.screen==='reward') render(); },1900); if(chance(rw.capture.p)){ SFX.play('capok'); rw.took.capture=true; if(r.party.length<3){ r.party.push(joinMon(rw.capture.sp)); rw.capMsg='야호! '+SP[rw.capture.sp].ko+'을(를) 잡았다! 파티에 들어왔다.'; rw.captured=rw.capture.sp; } else { rw.partyFull=rw.capture.sp; } } else { SFX.play('capfail'); rw.capMsg='아깝다! '+SP[rw.capture.sp].ko+'이(가) 볼에서 빠져나와 도망쳤다.'+(r.balls>0?' 다시 던질 수 있다.':''); } if(rw.capMsg&&!rw.took.capture&&r.balls<=0) rw.took.capture=true; if(rw.took.capture&&!rw.partyFull){ /* keep msg */ } render(); } break;
+    case 'replace': { const i=+arg; const old=r.party[i]; for(const c of r.deck) if(c.owner===old.uid) c.owner=null; r.party[i]=joinMon(r.reward.partyFull); if(S.mode==='switch') r.active=Math.min(r.active,r.party.length-1); r.reward.capMsg=old.ko+'을(를) 보내고 '+r.party[i].ko+'을(를) 파티에 넣었다.'; r.reward.partyFull=null; render(); } break;
+    case 'evolve': { const m=r.party.find(x=>x.uid===+arg); const id=evolve(m); SFX.play('evolve'); r.reward.took.evo=true; r.reward.evoMsg=m.ko+'(으)로 진화했다! 새 기술 카드: '+KO[id].n; toast(r.reward.evoMsg); render(); } break;
+    case 'tomap': toMap(); break;
+    case 'win': r.badges.push(BOSS.badge); S.screen='win'; render(); break;
+    case 'ev': doEvent(arg); break;
+    case 'evpick': { const ev=r.event; const c=ev.pickCard.cards[+arg]; if(ev.pickCard.mode==='trade'){ r.deck=r.deck.filter(x=>x.uid!==c.uid); const o=r.party.find(m=>m.uid===c.owner); const pool=o?SP[o.sp].pool.filter(id=>M[id]&&M[id].rare):[]; const nid=pool.length?pick(pool):pick(SP[o?o.sp:r.party[0].sp].pool.filter(id=>M[id])); const nc=mkCard(nid,o?o.uid:null); r.deck.push(nc); ev.text+=' '+cname(c)+' → '+cname(nc)+'.'; ev.pickCard=null; } else if(ev.pickCard.mode==='remove'){ r.deck=r.deck.filter(x=>x.uid!==c.uid); ev.pickCard.left--; ev.text+=' '+cname(c)+' 제거.'; if(ev.pickCard.left<=0) ev.pickCard=null; else ev.pickCard.cards=r.deck.slice(); } else { r.deck.push(c); ev.pickCard=null; } render(); } break;
+    case 'evup': { const c=r.event.upCard.cards[+arg]; c.up=true; r.event.upCard=null; r.event.text+=' '+cname(c)+' 강화.'; render(); } break;
+    case 'rest': doRest(arg); break;
+    case 'restup': { const c=S.ui.upCards[+arg]; c.up=true; S.ui.upCards=null; S.ui.restDone='훈련 완료: '+cname(c); render(); } break;
+    case 'buycard': { const sh=r.shop; const c=sh.cards[+arg]; const price=def(c).rare?100:50; if(r.money<price){ toast('원이 부족하다'); return; } r.money-=price; r.deck.push(c); sh.sold['c'+arg]=true; SFX.play('buy'); render(); } break;
+    case 'buyitem': { if(r.money<ITEMS[arg][2]) return; r.money-=ITEMS[arg][2]; r.items.push(arg); r.shop.sold[arg]=true; render(); } break;
+    case 'buyberry': { if(r.money<BERRIES[arg][2]||r.berries.length>=3) return; r.money-=BERRIES[arg][2]; r.berries.push(arg); r.shop.sold[arg]=true; render(); } break;
+    case 'buyball': { if(r.money<50) return; r.money-=50; r.balls++; render(); } break;
+    case 'shoprm': { if(r.money<r.shop.removeCost) return; S.ui.rmCards=r.deck.slice(); render(); } break;
+    case 'shoprmpick': { const c=S.ui.rmCards[+arg]; r.money-=r.shop.removeCost; r.deck=r.deck.filter(x=>x.uid!==c.uid); r.shop.sold.rm=true; r.hist.push('rm'); S.ui.rmCards=null; toast(cname(c)+' 제거'); render(); } break;
+  }
+});
+function showDlg(h){ const d=document.getElementById('dlg'); d.innerHTML=h; d.showModal(); d.querySelectorAll('[data-act]').forEach(el=>el.addEventListener('click',(ev)=>{ const a=el.dataset.act; if(a==='closedlg') d.close(); if(a==='quitok'){ d.close(); S.run=null; S.multi=null; S.screen='title'; try{localStorage.removeItem('cobblespire-proto');}catch(e){} render(); } ev.stopPropagation(); })); }
+function useBerry(i){ const r=S.run; const k=r.berries[i]; const b=r.battle; const targets=b?fieldMons():r.party.filter(m=>m.hp>0); if(!targets.length) return; const m=targets.reduce((a,x)=>a.hp/a.maxHp<x.hp/x.maxHp?a:x);
+  if(k==='oran') heal(m,10); else if(k==='sitrus') heal(m,Math.round(m.maxHp*.25)); else if(k==='lum'){ for(const t of targets) for(const s of ['poison','burn','para','sleep','vuln']) delete t.st[s]; } else if(k==='lansat'){ if(!b){ toast('전투 중에만 쓸 수 있다'); return; } b.energy++; }
+  r.berries.splice(i,1); if(b) log(BERRIES[k][0]+' 사용: '+m.ko); else toast(BERRIES[k][0]+' 사용: '+m.ko); render(); }
+function takeReward(k){ const r=S.run, rw=r.reward; if(k==='money'){ r.money+=rw.money; } if(k==='berry'){ if(r.berries.length<3) r.berries.push(rw.berry); } if(k==='item') r.items.push(rw.item); if(k==='badge'){ /* 기록은 win에서 */ } if(k==='fullcard'){ const sp=SP[rw.partyFull]; r.deck.push(mkCard(pick(sp.moves.filter(id=>M[id])),null)); rw.partyFull=null; rw.capMsg=sp.ko+'의 기술 카드 1장을 받았다.'; }
+  rw.took[k]=true; render(); }
+function doEvent(k){ const r=S.run, ev=r.event; const lead=r.party[S.mode==='switch'?r.active:0]; ev.done=true;
+  switch(k){ case 'leave': ev.text='조용히 지나갔다.'; break;
+    case 'rm1': ev.text='할아버지가 고개를 끄덕인다.'; ev.pickCard={mode:'remove',cards:r.deck.slice(),left:1,title:'잊을 기술 카드를 고르세요'}; break;
+    case 'rm2': lead.hp=Math.max(1,lead.hp-7); ev.text=lead.ko+'이(가) 7 피해를 입었다.'; ev.pickCard={mode:'remove',cards:r.deck.slice(),left:2,title:'잊을 기술 카드를 고르세요 (2장)'}; break;
+    case 'fish': if(chance(.6)){ const sp=pick(['psyduck','slowpoke']); if(r.party.length<3){ r.party.push(joinMon(sp)); ev.text='찌가 움직였다! '+SP[sp].ko+'이(가) 낚였다. 파티에 들어왔다.'; } else { r.deck.push(mkCard(pick(SP[sp].moves.filter(id=>M[id])),null)); ev.text=SP[sp].ko+'이(가) 낚였지만 파티가 가득 차서 기술 카드만 배웠다.'; } } else { if(r.party.length<3){ r.party.push(joinMon('magikarp')); ev.text='잉어킹이다... 잉어킹이 파티에 들어왔고 덱에 튀어오르기 카드가 들어왔다. '+placeOf(6)+'부터 포켓몬센터에서 진화할 수 있다.'; } else { ev.text='잉어킹이다... 덱에 튀어오르기 카드 2장이 들어왔다.'; r.deck.push(mkCard('splashc',null)); } r.deck.push(mkCard('splashc',null)); } break;
+    case 'camp': for(const m of r.party) heal(m,Math.round(m.maxHp*.15)); ev.text='모닥불 앞에서 함께 쉬었다. 파티 HP 15% 회복.'; break;
+    case 'elite': r.event=null; startBattle('elite',{trainer:ev.id==='rival'?{name:'라이벌 그린',mons:['pidgeotto','wartortle'],line:'내 포켓몬의 냄새를 맡아 보라고!'}:pick(TRAINERS.slice(2))}); return;
+    case 'give': if(r.items.length){ const it=r.items.pop(); ev.text=ITEMS[it][0]+'을(를) 빼앗겼다.'; } else { r.money=Math.max(0,r.money-30); ev.text='30원을 빼앗겼다.'; } break;
+    case 'fight': lead.hp=Math.max(1,lead.hp-12); r.money+=40; ev.text=lead.ko+'이(가) 12 피해를 입으며 똘마니를 쫓아냈다. 떨어뜨린 40원을 주웠다.'; break;
+    case 'rock': { const m=r.party.find(canEvolve); if(m){ const id=evolve(m); ev.text='바위가 빛났다! '+m.ko+'(으)로 진화했다. 새 기술 카드: '+KO[id].n; } else { r.money+=20; ev.text='바위 밑에서 20원을 찾았다.'; } } break;
+    case 'train': lead.hp=Math.max(1,lead.hp-8); ev.text=lead.ko+'이(가) 8 피해를 입으며 수련했다.'; ev.upCard={cards:r.deck.filter(c=>!c.up)}; break;
+    case 'healone': { const m=r.party.reduce((a,x)=>a.hp/a.maxHp<x.hp/x.maxHp?a:x); heal(m,m.maxHp); m.st={}; ev.text=m.ko+'이(가) 완전히 회복했다.'; } break;
+    case 'healall': for(const m of r.party) heal(m,Math.round(m.maxHp*.2)); ev.text='파티 전원이 20% 회복했다.'; break;
+    case 'berry1': { const bk=pick(Object.keys(BERRIES)); if(r.berries.length<3){ r.berries.push(bk); ev.text=BERRIES[bk][0]+'을(를) 땄다.'; } else ev.text='열매 가방이 가득 차서 '+BERRIES[bk][0]+'을(를) 두고 왔다.'; } break;
+    case 'shake': { const got=[]; for(let i=0;i<2;i++){ const bk=pick(Object.keys(BERRIES)); if(r.berries.length<3){ r.berries.push(bk); got.push(BERRIES[bk][0]); } } ev.text=(got.length?got.join(', ')+'이(가) 떨어졌다.':'가방이 가득 차 열매를 주울 수 없었다.'); if(chance(.4)){ r.event=null; startBattle('wild',{table:['caterpie','weedle','paras']}); return; } } break;
+    case 'moon': { const m=r.party.find(x=>SP[x.sp].evo); if(m){ const id=evolve(m); SFX.play('evolve'); ev.text='달의돌이 빛났다! '+m.ko+'(으)로 진화했다. 새 기술 카드: '+KO[id].n; } else { r.money+=80; ev.text='돌을 주워 80원에 팔았다.'; } } break;
+    case 'egg': r.egg={left:2}; ev.text='알을 받았다. 전투를 2번 하면 부화한다.'; break;
+    case 'buykarp': if(r.money>=50){ r.money-=50; if(r.party.length<3){ r.party.push(joinMon('magikarp')); ev.text='잉어킹을 샀다! '+placeOf(6)+'부터 포켓몬센터에서 갸라도스로 진화할 수 있다.'; } else { r.deck.push(mkCard('splashc',null)); ev.text='잉어킹을 샀지만 파티가 가득 차 튀어오르기 카드만 받았다...'; } } else ev.text='돈이 부족해 장수가 코웃음을 쳤다.'; break;
+    case 'open': { const roll=Math.random(); if(roll<.4){ const it=pick(Object.keys(ITEMS).filter(i=>!r.items.includes(i))); r.items.push(it); ev.text='소포 안에 '+ITEMS[it][0]+'이(가) 들어 있었다!'; } else if(roll<.8){ r.money+=40; ev.text='40원이 들어 있었다.'; } else ev.text='소포는 비어 있었다...'; } break;
+    case 'post': r.money+=10; ev.text='우체통에 넣었다. 착한 일을 해서 10원을 받았다.'; break;
+    case 'adopt': { const sp=pick(['pikachu','sandshrew','meowth','psyduck','oddish']); if(r.party.length<3){ const m=joinMon(sp); m.hp=Math.round(m.maxHp*.3); r.party.push(m); ev.text=SP[sp].ko+'이(가) 파티에 들어왔다. 많이 지쳐 있다 (HP 30%).'; } else { r.deck.push(mkCard(pick(SP[sp].moves.filter(id=>M[id])),null)); ev.text=SP[sp].ko+'이(가) 기술을 가르쳐 주고 떠났다.'; } } break;
+    case 'trade': ev.text='"좋아, 어떤 카드를 줄래?"'; ev.pickCard={mode:'trade',cards:r.deck.filter(c=>c.owner),left:1,title:'넘길 기술 카드를 고르세요 (같은 포켓몬의 희귀 카드를 받는다)'}; break;
+    case 'bath': for(const m of r.party){ heal(m,Math.round(m.maxHp*.4)); m.st={}; } ev.text='온천에 몸을 담갔다. 전원 40% 회복, 상태이상 해제.'; break; }
+  render(); }
+function doRest(k){ const r=S.run; if(k==='heal'){ for(const m of r.party) heal(m,Math.round(m.maxHp*.3)); S.ui.restDone='파티 전원이 30% 회복했다.'; }
+  else if(k==='train'){ S.ui.upCards=r.deck.filter(c=>!c.up); S.ui.restDone='훈련'; }
+  else if(k.startsWith('evo:')){ const m=r.party.find(x=>x.uid===+k.slice(4)); const id=evolve(m); SFX.play('evolve'); S.ui.restDone='축하합니다! '+m.ko+'(으)로 진화했다. 새 기술 카드: '+KO[id].n; }
+  render(); }
+
+/* ---------- 부팅 ---------- */
+function boot(data){ if(data&&data.S){ S=data.S; UID=data.UID||UID; } else { try{ const j=JSON.parse(localStorage.getItem('cobblespire-proto')); if(j){ S.mode=j.mode||S.mode; S.chart=j.chart||S.chart; if(j.mp) S.mp=j.mp; } S.mute=!!localStorage.getItem('cobblespire-mute'); }catch(e){} } S.auto=false; render(); }
+window.claude?.hot?.snapshot?.(()=>({S,UID}));
+window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+</script>
+
+</body>
+</html>

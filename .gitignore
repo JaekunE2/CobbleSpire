@@ -1,0 +1,13 @@
+# 포켓몬 스프라이트·아이템 아이콘(PokeAPI 저장소에서 받은 닌텐도 저작 자산)은 커밋하지 않는다. GitHub Pages판은 런타임에 PokeAPI에서 불러온다.
+proto/sprites/
+proto/items/
+# 스프라이트가 내장된 빌드 산출물
+proto/cobblespire-proto.html
+proto/index.html
+proto/_check.js
+proto/_server.log
+proto/_*.png
+proto/_src_backup*.html
+proto/shots/
+__pycache__/
+*.pyc

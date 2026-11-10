@@ -23,6 +23,7 @@ async function run(sb,mode,chart,seed){
       if(ev.pickCard){ const c=ev.pickCard.cards.find(x=>x.id==='guard'||x.id==='growl'||x.id==='tailwhip')||ev.pickCard.cards[0]; if(ev.pickCard.mode==='remove'){ r.deck=r.deck.filter(x=>x.uid!==c.uid); } ev.pickCard=null; } if(ev.upCard){ if(ev.upCard.cards[0]) ev.upCard.cards[0].up=true; ev.upCard=null; } r.event=null; S.screen='map'; }
     else if(S.screen==='rest'){ const m=r.party.find(sb.canEvolve); if(m) sb.doRest('evo:'+m.uid); else sb.doRest(r.party.some(x=>x.hp<x.maxHp*.6)?'heal':'train'); if(sb.S.ui.upCards){ if(sb.S.ui.upCards[0]) sb.S.ui.upCards[0].up=true; } sb.S.ui={}; S.screen='map'; }
     else if(S.screen==='shop'){ const sh=r.shop; if(r.money>=50&&sh.cards[0]){ r.money-=50; r.deck.push(sh.cards[0]); } if(r.money>=50){ r.money-=50; r.balls++; } r.shop=null; S.screen='map'; }
+    else if(['tutor','casino','daycare'].includes(S.screen)){ sb.botStep(r); }
     else if(S.screen==='gameover'||S.screen==='win') break; else throw new Error('unknown '+S.screen); }
   return {screen:sb.S.screen,floor:sb.S.run.floor,kind:lastKind,party:sb.S.run.party.length}; }
 const bal=process.argv[2]?JSON.parse(process.argv[2]):null;

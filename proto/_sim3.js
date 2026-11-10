@@ -11,7 +11,7 @@ async function run(sb,mode,n,mpmode,seed){
   while(steps++<4000){ const r=S.run; if(S.screen==='title') break;
     if(S.screen==='map'){ const me=sb.H(); const re=sb.reachableOf(me); if(!re.length) break; await sb.chooseNode(sb.botPickNode(me,re)); }
     else if(S.screen==='battle'){ const b=sb.H().battle; lastKind=b.kind; if(b.over) break; if(b.turn===1&&b.curPid===sb.H().id&&!b.counted){ b.counted=true; if(b.parts.length>1) coop++; else solo++; } await sb.botTurn(b); if(S.screen!=='battle') continue; await sb.endTurn(); }
-    else if(['reward','event','rest','shop'].includes(S.screen)){ sb.botStep(sb.H()); if(S.screen==='map') await sb.toMap(); }
+    else if(['reward','event','rest','shop','tutor','casino','daycare'].includes(S.screen)){ sb.botStep(sb.H()); if(S.screen==='map') await sb.toMap(); }
     else if(S.screen==='gameover'||S.screen==='win') break; else throw new Error('unknown '+S.screen); }
   const me=sb.H(); const mu=S.multi;
   return {screen:S.screen,floor:me.floor,kind:lastKind,coop,solo,botsDead:mu.players.filter(p=>p.bot&&p.dead).length,botsAlive:mu.players.filter(p=>p.bot&&!p.dead).length,money:me.money,news:mu.news.length,steps};
